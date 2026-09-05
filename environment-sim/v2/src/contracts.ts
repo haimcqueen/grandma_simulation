@@ -35,6 +35,9 @@ export type MovementProfile = { speed: number; radius: number; height: number };
 export type Scenario = "clear" | "cart" | "blocked";
 export type SimulationEvent = {
   type:
+    | "floorRequested"
+    | "stairsStarted"
+    | "floorReached"
     | "ready"
     | "manualControlStarted"
     | "fallStarted"
@@ -57,7 +60,10 @@ export type AssetTransform = {
   quaternion: [number, number, number, number];
   scale: number;
 };
+export type WorldCutout = { min: [number, number, number]; max: [number, number, number] };
 export type WorldAsset = {
+  /** Authored openings in simulation world coordinates, applied to appearance and depth. */
+  cutouts?: WorldCutout[];
   id: string;
   label: string;
   source: string;

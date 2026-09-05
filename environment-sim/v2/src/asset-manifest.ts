@@ -57,7 +57,16 @@ export function parseWorldAsset(input: unknown): WorldAsset {
   if (!value.camera || typeof value.camera !== "object")
     throw new Error("World camera is missing.");
   const camera = value.camera as Record<string, unknown>;
+  const cutouts = value.cutouts === undefined ? undefined : (() => {
+    if (!Array.isArray(value.cutouts) || value.cutouts.length > 8) throw new Error("At most eight world cutouts are supported.");
+    return value.cutouts.map((cut: {min: unknown; max: unknown}) => {
+      const min = tuple(cut.min, 3) as [number, number, number], max = tuple(cut.max, 3) as [number, number, number];
+      if (min.some((v, i) => v >= max[i])) throw new Error("World cutout bounds must have positive volume.");
+      return { min, max };
+    });
+  })();
   return {
+    cutouts,
     id: text("id"),
     label: text("label"),
     source: text("source"),

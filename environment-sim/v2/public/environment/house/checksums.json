@@ -1,0 +1,22 @@
+[
+  {
+    "name": "house-ground.rad",
+    "bytes": 43452680,
+    "sha256": "75d102ed1ec65cbcaec57a6e361eb024d5f497af1a366d46edcd9176723559cc"
+  },
+  {
+    "name": "house-ground-collider.glb",
+    "bytes": 4320328,
+    "sha256": "f2bc2c892005c3d96ca66f286781f20f340505728971a10ca62608de6eb488d4"
+  },
+  {
+    "name": "house-upper.rad",
+    "bytes": 44499632,
+    "sha256": "ec575a47012abd14366dbfd44aca1c978ccdf8bc10074d20b535714a9a1159c1"
+  },
+  {
+    "name": "house-upper-collider.glb",
+    "bytes": 4385408,
+    "sha256": "cc17f449ad2aa9668fe5e8de8e8d4adb22d68444548222ea08946833db08b50a"
+  }
+]

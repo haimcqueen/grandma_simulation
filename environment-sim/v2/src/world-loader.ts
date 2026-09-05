@@ -51,7 +51,8 @@ export async function loadWorld(asset: WorldAsset) {
     depthWrite: false,
   });
   // Both visual splats and depth geometry use the same world-space cut plane.
-  // Only presentation changes: navigation and the original collider stay intact.
+  // Camera cuts only change presentation. Authored openings also filter collider queries;
+  // the shared connector supplies movement and floor support across those openings.
   const cutaway = new SplatEdit({ name: "House cutaway", softEdge: 0 });
   const ceiling = new SplatEditSdf({ type: SplatEditSdfType.PLANE, opacity: 1 });
   ceiling.rotation.x = Math.PI / 2;
@@ -63,6 +64,18 @@ export async function loadWorld(asset: WorldAsset) {
   frontEdit.add(frontBox);
   frontEdit.sdfs = [frontBox];
   cutaway.add(frontEdit);
+  // Explicit mesh edits prevent one floor's ceiling or portal cut affecting another floor.
+  const openings = (asset.cutouts ?? []).map(bounds => {
+    const edit = new SplatEdit({ name: "Authored connection opening", softEdge: 0 });
+    const box = new SplatEditSdf({ type: SplatEditSdfType.BOX, opacity: 0 });
+    box.position.fromArray(bounds.min).add(new THREE.Vector3().fromArray(bounds.max)).multiplyScalar(0.5);
+    box.scale.fromArray(bounds.max).sub(new THREE.Vector3().fromArray(bounds.min)).multiplyScalar(0.5);
+    edit.add(box); edit.sdfs = [box]; edit.updateMatrixWorld(true);
+    return edit;
+  });
+  splats.edits = [cutaway, frontEdit, ...openings];
+  const cutoutBounds = (asset.cutouts ?? []).map(bounds => new THREE.Box3(new THREE.Vector3().fromArray(bounds.min), new THREE.Vector3().fromArray(bounds.max)));
+  const raycast = (ray: THREE.Raycaster) => ray.intersectObject(collider, true).filter(hit => !cutoutBounds.some(bounds => bounds.containsPoint(hit.point)));
   const frontEnabled = { value: false };
   const frontEquation = { value: new THREE.Vector3() };
   const frontBase = { value: 0.65 };
@@ -71,14 +84,17 @@ export async function loadWorld(asset: WorldAsset) {
       shader.uniforms.frontEnabled = frontEnabled;
       shader.uniforms.frontEquation = frontEquation;
       shader.uniforms.frontBase = frontBase;
+      shader.uniforms.openingCount = { value: cutoutBounds.length };
+      shader.uniforms.openingMin = { value: Array.from({length: 8}, (_, i) => cutoutBounds[i]?.min ?? new THREE.Vector3()) };
+      shader.uniforms.openingMax = { value: Array.from({length: 8}, (_, i) => cutoutBounds[i]?.max ?? new THREE.Vector3()) };
       shader.vertexShader = "varying vec3 cutawayWorld;\n" + shader.vertexShader;
       shader.vertexShader = shader.vertexShader.replace("#include <begin_vertex>",
         "#include <begin_vertex>\ncutawayWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-      shader.fragmentShader = "varying vec3 cutawayWorld; uniform bool frontEnabled; uniform vec3 frontEquation; uniform float frontBase;\n" + shader.fragmentShader;
+      shader.fragmentShader = "varying vec3 cutawayWorld; uniform bool frontEnabled; uniform vec3 frontEquation; uniform float frontBase; uniform int openingCount; uniform vec3 openingMin[8]; uniform vec3 openingMax[8];\n" + shader.fragmentShader;
       shader.fragmentShader = shader.fragmentShader.replace("#include <clipping_planes_fragment>",
-        "#include <clipping_planes_fragment>\nif (frontEnabled && cutawayWorld.y > frontBase && dot(cutawayWorld.xz, frontEquation.xy) > frontEquation.z) discard;");
+        "#include <clipping_planes_fragment>\nfor (int i = 0; i < 8; i++) { if (i >= openingCount) break; if (all(greaterThanEqual(cutawayWorld, openingMin[i])) && all(lessThanEqual(cutawayWorld, openingMax[i]))) discard; }\nif (frontEnabled && cutawayWorld.y > frontBase && dot(cutawayWorld.xz, frontEquation.xy) > frontEquation.z) discard;");
     };
-    material.customProgramCacheKey = () => "house-camera-cut-v1";
+    material.customProgramCacheKey = () => "house-camera-openings-v2";
   }
   const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 2);
   let triangles = 0;
@@ -104,6 +120,7 @@ export async function loadWorld(asset: WorldAsset) {
   });
   return {
     splats,
+    raycast,
     cutaway,
     get cutawayState() {
       return { ceilingHeight: ceiling.opacity === 0 ? ceiling.position.y : null,
@@ -143,7 +160,7 @@ export async function loadWorld(asset: WorldAsset) {
         new THREE.Vector3(x, ceiling, z),
         new THREE.Vector3(0, -1, 0),
       );
-      return ray.intersectObject(collider, true)[0]?.point ?? null;
+      return raycast(ray)[0]?.point ?? null;
     },
     dispose() {
       splats.dispose();

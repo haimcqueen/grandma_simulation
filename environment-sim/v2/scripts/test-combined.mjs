@@ -66,6 +66,8 @@ try {
  const occlusion = await page.evaluate(async () => {
   const THREE = await import('/node_modules/three/build/three.module.js');
   const v = window.houseLab.viewer;
+  // Synchronize the deliberately moved test resident before sampling offscreen.
+  v.update(window.houseLab.simulation);
   const target = new THREE.WebGLRenderTarget(256, 256);
   const previousTarget = v.renderer.getRenderTarget();
   const previousColor = v.renderer.getClearColor(new THREE.Color()).clone();

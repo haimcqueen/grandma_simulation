@@ -5,12 +5,22 @@ import type {
   Scenario,
   SimulationEvent,
 } from "./contracts";
+import { stairLength, sampleStair } from "./stair-motion";
+import type { House, FloorJourney } from "./house";
+import { floorHeightAt } from "./navigation-grid";
 import { isWalkable, scenarioObjects } from "./environment";
 import { distance, planRoute, segmentClear } from "./navigation";
 import { postures, type Posture } from "./posture";
 import { roomFalls, roomFallFrame, roomFallDuration, type RoomFall, type RoomFallKind } from "./falls";
 
 export class Simulation {
+  house?: House;
+  floorId = "ground";
+  floorJourney: FloorJourney | null = null;
+  private stairInput = 0;
+  pointTarget: Point | null = null;
+  private floorScenarios = new Map<string, Scenario>();
+  get elevation() { return this.floorJourney?.phase === "stairs" ? this.floorJourney.elevation : floorHeightAt(this.environment, this.position); }
   readonly characterId = "resident-01";
   position: Point;
   heading = 0;
@@ -33,12 +43,91 @@ export class Simulation {
   revision = 0;
   events: SimulationEvent[] = [];
   profile: MovementProfile = { speed: postures.grandma.speed, radius: 0.28, height: 1.7 };
-  constructor(readonly environment: Environment) {
+  constructor(public environment: Environment) {
     this.position = { ...environment.spawn };
     this.fallOrigin = { ...this.position };
     this.record("ready", "Resident ready. Choose a destination.", [
       this.characterId,
     ]);
+  }
+  configureHouse(house: House, floorId: string) {
+    const floor = house.floors.find(item => item.id === floorId);
+    if (!floor || floor.environment.id !== this.environment.id) throw new Error("House floor does not match the active environment.");
+    this.house = house;
+    this.floorId = floorId;
+  }
+  requestFloor(targetFloor: string, destination?: string) {
+    if (!this.house || this.fall || this.floorJourney) return false;
+    const target = this.house.floors.find(floor => floor.id === targetFloor);
+    if (!target || (destination && !target.environment.destinations.some(item => item.id === destination))) return false;
+    if (targetFloor === this.floorId) { if (destination) this.requestDestination(destination); return true; }
+    const connection = this.house.connections.find(link =>
+      (link.fromFloor === this.floorId && link.toFloor === targetFloor) ||
+      (link.toFloor === this.floorId && link.fromFloor === targetFloor));
+    if (!connection) return false;
+    const points = connection.fromFloor === this.floorId ? connection.points : [...connection.points].reverse();
+    const targetScenario = this.floorScenarios.get(targetFloor) ?? "clear";
+    if (!isWalkable(target.environment, points.at(-1)!, [...target.environment.objects, ...scenarioObjects(target.environment, targetScenario)], this.profile.radius)) {
+      this.record("routeBlocked", "The destination landing is obstructed.", [this.characterId, connection.id, targetFloor]);
+      return false;
+    }
+    const route = planRoute(this.environment, this.position, points[0], this.obstacles, this.profile.radius);
+    if (!route) {
+      this.record("routeBlocked", "The route to the stairs is blocked. Clear the passage and try again.", [this.characterId, connection.id]);
+      return false;
+    }
+    this.manual = false; this.currentSpeed = 0; this.destination = null; this.pointTarget = null;
+    this.floorJourney = { connection, targetFloor, destination, phase: "approach", points, index: 1, elevation: this.elevation, progress: 0, manual: false };
+    this.route = route; this.status = "walking";
+    this.record("floorRequested", `Walking to the stairs for ${target.label}.`, [this.characterId, connection.id, targetFloor]);
+    return true;
+  }
+  private advanceStairs(delta: number) {
+    const journey = this.floorJourney!;
+    const input = journey.manual ? this.stairInput : 1;
+    const length = stairLength(journey.points);
+    const previous = journey.progress;
+    journey.progress = Math.max(0, Math.min(length, previous + input * Math.min(this.profile.speed, 0.65) * (input < 0 ? 0.5 : 1) * delta));
+    const pose = sampleStair(journey.points, journey.progress);
+    this.position = { x: pose.x, z: pose.z };
+    journey.elevation = pose.y; journey.index = pose.index;
+    this.heading = pose.heading;
+    const travel = journey.progress - previous;
+    this.currentSpeed = delta > 0 ? travel / delta : 0;
+    this.distance += Math.abs(travel);
+    this.gaitPhase += travel / postures[this.posture].motion.strideLength;
+    this.status = Math.abs(travel) > 1e-8 ? "walking" : "idle";
+    const returned = journey.progress === 0 && input < 0;
+    if (returned || journey.progress === length) {
+      this.floorScenarios.set(this.floorId, this.scenario);
+      if (!returned) this.floorId = journey.targetFloor;
+      this.environment = this.house!.floors.find(floor => floor.id === this.floorId)!.environment;
+      this.scenario = this.floorScenarios.get(this.floorId) ?? "clear";
+      this.floorJourney = null; this.route = []; this.status = "idle"; this.currentSpeed = 0; this.stairInput = 0; this.revision++;
+      this.manual = journey.manual;
+      this.record("floorReached", `Reached ${this.environment.label}.`, [this.characterId, this.floorId, journey.connection.id]);
+      if (!returned && !journey.manual && journey.destination) this.requestDestination(journey.destination);
+    }
+  }
+  /** Stop where you are. On stairs, retain support and allow W/S to continue or reverse. */
+  stopMovement() {
+    if (this.fall) return;
+    if (this.floorJourney?.phase === "stairs") this.floorJourney.manual = true;
+    else this.floorJourney = null;
+    this.route = []; this.destination = null; this.pointTarget = null;
+    this.manual = true; this.stairInput = 0; this.currentSpeed = 0; this.status = "idle";
+  }
+  requestPoint(point: Point) {
+    if (this.fall || this.floorJourney?.phase === "stairs" || ![point.x, point.z].every(Number.isFinite)) return false;
+    const route = planRoute(this.environment, this.position, point, this.obstacles, this.profile.radius);
+    if (!route) {
+      this.record("routeBlocked", "That point is outside reachable walking space.", [this.characterId]);
+      return false;
+    }
+    this.floorJourney = null; this.manual = false; this.currentSpeed = 0;
+    this.destination = null; this.pointTarget = { ...point }; this.route = route; this.status = "walking";
+    this.record("routeStarted", `Walking to (${point.x.toFixed(2)}, ${point.z.toFixed(2)}).`, [this.characterId]);
+    return true;
   }
   get obstacles() {
     return [
@@ -57,22 +146,31 @@ export class Simulation {
     ].slice(0, 40);
   }
   requestDestination(id: string) {
-    if (this.fall) return;
+    if (this.fall || this.floorJourney?.phase === "stairs") return;
     if (!this.environment.destinations.some((target) => target.id === id))
       throw new Error(`Unknown destination: ${id}`);
     this.manual = false;
     this.currentSpeed = 0;
+    this.floorJourney = null;
+    this.pointTarget = null;
     this.destination = id;
     this.replan(false);
   }
   setPosture(posture: Posture) {
-    if (this.fall) return;
+    if (this.fall || this.floorJourney) return;
     this.posture = posture;
     this.profile.speed = postures[posture].speed;
     this.currentSpeed = 0;
   }
   setManual() {
-    if (this.fall) return;
+    if (this.fall || this.paused) return;
+    if (this.floorJourney?.phase === "stairs") {
+      this.floorJourney.manual = true; this.floorJourney.destination = undefined;
+      this.manual = true; return;
+    }
+    if (this.floorJourney?.manual) return;
+    this.floorJourney = null;
+    this.pointTarget = null;
     if (this.manual) return;
     this.manual = true;
     this.route = [];
@@ -82,11 +180,27 @@ export class Simulation {
     this.record("manualControlStarted", "Keyboard control. W/S move; A/D turn.", [this.characterId]);
   }
   stopManualMotion() {
+    this.stairInput = 0;
     this.currentSpeed = 0;
     if (this.manual) this.status = "idle";
   }
   drive(forward: number, turn: number, delta: number) {
-    if (this.paused || !this.manual || ![forward, turn, delta].every(Number.isFinite) || delta <= 0) return;
+    if (this.fall || this.paused || (!this.manual && !this.floorJourney?.manual) || ![forward, turn, delta].every(Number.isFinite) || delta <= 0) return;
+    if (this.floorJourney?.manual) {
+      this.stairInput = Math.max(-1, Math.min(1, forward)); return;
+    }
+    // Enter a connector only while moving toward its supported endpoint.
+    if (forward > 0 && this.house) {
+      for (const link of this.house.connections) {
+        if (link.fromFloor !== this.floorId && link.toFloor !== this.floorId) continue;
+        const points = link.fromFloor === this.floorId ? link.points : [...link.points].reverse();
+        const dx = points[1].x - points[0].x, dz = points[1].z - points[0].z;
+        const facing = (Math.sin(this.heading) * dx + Math.cos(this.heading) * dz) / Math.hypot(dx, dz);
+        if (distance(this.position, points[0]) < 0.18 && facing > 0.7 && this.requestFloor(link.fromFloor === this.floorId ? link.toFloor : link.fromFloor)) {
+          this.floorJourney!.manual = true; this.stairInput = forward; return;
+        }
+      }
+    }
     delta *= this.playbackSpeed;
     forward = Math.max(-1, Math.min(1, forward));
     turn = Math.max(-1, Math.min(1, turn));
@@ -110,14 +224,20 @@ export class Simulation {
       if (segmentClear(this.environment, this.position, next, obstacles, this.profile.radius)) {
         actual = distance(this.position, next);
         this.position = next;
-      } else this.currentSpeed = 0;
+      } else {
+        const candidates = [{ x: next.x, z: this.position.z }, { x: this.position.x, z: next.z }]
+          .filter(point => segmentClear(this.environment, this.position, point, obstacles, this.profile.radius))
+          .sort((a, b) => distance(this.position, b) - distance(this.position, a));
+        if (candidates[0]) { actual = distance(this.position, candidates[0]); this.position = candidates[0]; }
+        if (actual < 1e-8) this.currentSpeed = 0;
+      }
       this.distance += actual;
       this.gaitPhase += actual * Math.sign(travel) / motion.strideLength + Math.abs(rotation) * 0.3;
       this.status = actual > 0.000001 || Math.abs(rotation) > 0.000001 ? "walking" : "idle";
     }
   }
   private replan(changed: boolean) {
-    const target = this.environment.destinations.find(
+    const target = this.pointTarget ? { ...this.pointTarget, id: "walk-point", label: "selected point" } : this.environment.destinations.find(
       (target) => target.id === this.destination,
     );
     if (!target) return;
@@ -143,7 +263,7 @@ export class Simulation {
     );
   }
   setScenario(scenario: Scenario) {
-    if (this.fall) return false;
+    if (this.fall || this.floorJourney) return false;
     if (scenario === this.scenario) return true;
     if (
       !isWalkable(
@@ -175,7 +295,7 @@ export class Simulation {
       }[scenario],
       ["passage-obstruction"],
     );
-    if (this.destination && this.status !== "arrived") this.replan(true);
+    if ((this.destination || this.pointTarget) && this.status !== "arrived") this.replan(true);
     return true;
   }
   advance(delta: number) {
@@ -184,6 +304,7 @@ export class Simulation {
     if (this.paused) return;
     delta *= this.playbackSpeed;
     this.time += delta;
+    if (this.floorJourney?.phase === "stairs") { this.advanceStairs(delta); return; }
     if (this.fall) {
       this.fall.elapsed = Math.min(this.fall.elapsed + delta, roomFallDuration(this.fall.kind));
       const frame = roomFallFrame(this.fall);
@@ -199,6 +320,7 @@ export class Simulation {
       }
       return;
     }
+    if (this.floorJourney?.manual && this.stairInput <= 0) { this.currentSpeed = 0; return; }
     if (this.manual || this.status !== "walking") return;
     let remaining = this.profile.speed * delta;
     while (remaining > 0 && this.route.length) {
@@ -221,17 +343,23 @@ export class Simulation {
       remaining -= travel;
       if (travel === length) this.route.shift();
     }
+    if (!this.route.length && this.floorJourney) {
+      this.floorJourney.phase = "stairs";
+      this.floorJourney.elevation = this.floorJourney.points[0].y;
+      this.record("stairsStarted", "Following the authored stair connection.", [this.characterId, this.floorJourney.connection.id]);
+      return;
+    }
     if (!this.route.length) {
       this.status = "arrived";
       this.record(
         "destinationReached",
-        `Arrived at ${this.environment.destinations.find((target) => target.id === this.destination)!.label.toLowerCase()}.`,
-        [this.characterId, this.destination!],
+        `Arrived at ${this.pointTarget ? "selected point" : this.environment.destinations.find((target) => target.id === this.destination)!.label.toLowerCase()}.`,
+        [this.characterId, this.destination ?? "walk-point"],
       );
     }
   }
   playFall(kind: RoomFallKind) {
-    if (postures[this.posture].crawl) return false;
+    if (this.floorJourney || postures[this.posture].crawl) return false;
     const scenario = roomFalls.find(fall => fall.id === kind);
     if (!scenario) return false;
     if (this.fall) this.position = { ...this.fallOrigin };
@@ -247,6 +375,8 @@ export class Simulation {
     return true;
   }
   reset() {
+    this.pointTarget = null; this.stairInput = 0;
+    this.floorJourney = null;
     this.fall = null;
     this.manual = false;
     this.currentSpeed = 0;
@@ -270,10 +400,14 @@ export class Simulation {
   snapshot() {
     return structuredClone({
       environmentId: this.environment.id,
+      floorId: this.floorId,
+      elevation: this.elevation,
+      floorJourney: this.floorJourney,
       characterId: this.characterId,
       position: this.position,
       heading: this.heading,
       destination: this.destination,
+      pointTarget: this.pointTarget,
       scenario: this.scenario,
       status: this.status,
       fall: this.fall,

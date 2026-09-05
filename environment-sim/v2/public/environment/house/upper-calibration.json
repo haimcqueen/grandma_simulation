@@ -1,0 +1,10 @@
+{
+  "floorY": 3.4,
+  "minimumX": -1.625,
+  "maximumX": 5.175,
+  "minimumZ": -3.525,
+  "maximumZ": 3.975,
+  "cell": 0.1,
+  "radius": 0.28,
+  "height": 1.7
+}

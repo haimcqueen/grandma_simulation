@@ -1,0 +1,51 @@
+{
+  "manifestVersion": 1,
+  "source": {
+    "kind": "asset",
+    "assetType": "world",
+    "id": "j97f28cvbpvs0bd0y18hmwrjen8dv040"
+  },
+  "mintUrl": "https://mint.gg/0x6b3213a50404eb5cb176ef4dccfb43bae9df7161/j97f28cvbpvs0bd0y18hmwrjen8dv040",
+  "artifacts": [
+    {
+      "id": "preview_image",
+      "artifactId": "preview_image",
+      "label": "Preview Image",
+      "kind": "asset_preview",
+      "role": "preview_image",
+      "format": "webp",
+      "filename": "photorealistic-primary-bedroom-en8dv040-preview.webp",
+      "contentType": "image/webp",
+      "downloadUrl": "https://cdn.mint.gg/worlds/oak-primary-bedroom-thumbnail-1c9d1c13d3e84112.webp",
+      "suggestedPath": "public/images/photorealistic-primary-bedroom-en8dv040-preview.webp",
+      "loaderHint": "image"
+    }
+  ],
+  "integrationMode": "remote_stream",
+  "runtime": {
+    "artifactId": "world_runtime_rad",
+    "role": "environment",
+    "kind": "gaussian_splat_world",
+    "renderer": "@sparkjsdev/spark",
+    "format": "rad",
+    "runtimeUrl": "https://cdn.mint.gg/rad/oak-primary-bedroom-ec575a47012abd14-lod.rad",
+    "byteSize": 44499632,
+    "collider": {
+      "artifactId": "world_collider",
+      "role": "physics_collider",
+      "kind": "triangle_mesh",
+      "format": "glb",
+      "runtimeUrl": "https://cdn.mint.gg/worlds/oak-primary-bedroom-collider-cc17f449ad2aa966.glb",
+      "visible": false,
+      "requiredForPhysics": true,
+      "loaderHint": "gltf"
+    },
+    "loaderHint": {
+      "renderer": "SparkRenderer",
+      "mesh": "SplatMesh",
+      "paged": true,
+      "lod": false
+    }
+  },
+  "presentationHint": "Load runtime.runtimeUrl with one SparkRenderer and a paged SplatMesh. Load runtime.collider.runtimeUrl under the exact same transform, keep the collider invisible, and use its triangle mesh whenever physics or collision is needed. Keep both URLs out of user-facing text."
+}

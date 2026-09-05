@@ -9,6 +9,8 @@ import type { Environment, WorldAsset } from "./contracts";
 import { floorHeightAt } from "./navigation-grid";
 import { loadAnimatedResident, type ResidentAssets } from "./animated-resident";
 import { loadRobotResident } from "./robot-resident";
+import type { House } from "./house";
+import { buildStairConnection, disposeStairConnection } from "./stair-environment";
 import type { Simulation } from "./simulation";
 import { postures, type Posture } from "./posture";
 import { defaultRobotAssets, type RobotAsset } from "./robot-assets";
@@ -36,6 +38,11 @@ export class Viewer {
   readonly debug = new THREE.Group();
   readonly destinations = new THREE.Group();
   get asset() { return this.worldAsset; }
+  house?: House;
+  floorView = "auto";
+  private houseWorlds = new Map<string, { world: Awaited<ReturnType<typeof loadWorld>>; asset: WorldAsset; floorY: number }>();
+  readonly stairs = new THREE.Group();
+  private visibleFloor = "";
   world?: Awaited<ReturnType<typeof loadWorld>>;
   mode: "fixture" | "world" | "world-simulation" = "fixture";
   readonly navigationMap = new THREE.Group();
@@ -147,7 +154,7 @@ export class Viewer {
         ),
         this.camera,
       );
-      const hit = ray.intersectObject(this.world.collider, true)[0];
+      const hit = this.world.raycast(ray)[0];
       if (hit) {
         this.marker.root.position.copy(hit.point);
         this.marker.root.visible = true;
@@ -156,6 +163,34 @@ export class Viewer {
     });
     this.setView("overview");
     this.resize();
+  }
+  /** Pick the visible floor, rejecting furniture and unverified surfaces. */
+  pickMovementTarget(clientX: number, clientY: number) {
+    if (this.mode === "world") return null;
+    const bounds = this.renderer.domElement.getBoundingClientRect();
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2((clientX - bounds.left) / bounds.width * 2 - 1, 1 - (clientY - bounds.top) / bounds.height * 2), this.activeCamera);
+    if (this.view === "map" || this.mode === "fixture") {
+      const hit = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.environment.floorY), new THREE.Vector3());
+      return hit ? { point: { x: hit.x, z: hit.z }, floor: this.house?.floors.find(floor => floor.environment.id === this.environment.id)?.id ?? "ground" } : null;
+    }
+    const floors = this.house ? this.house.floors : [{ id: "ground", environment: this.environment }];
+    const candidates = floors.flatMap(floor => {
+      const world = this.houseWorlds.get(floor.id)?.world ?? this.world;
+      if (!world?.splats.visible) return [];
+      const cut = world.cutawayState;
+      const hit = world.raycast(ray).find(hit => {
+        if (cut.ceilingHeight !== null && hit.point.y > cut.ceilingHeight) return false;
+        const [x, z, limit] = cut.frontEquation;
+        return !(cut.frontEnabled && hit.point.y > floor.environment.floorY + 0.65 && hit.point.x * x + hit.point.z * z > limit);
+      });
+      return hit ? [{ hit, floor }] : [];
+    }).sort((a, b) => a.hit.distance - b.hit.distance);
+    const nearest = candidates[0];
+    if (!nearest) return null;
+    const point = { x: nearest.hit.point.x, z: nearest.hit.point.z };
+    if (Math.abs(nearest.hit.point.y - floorHeightAt(nearest.floor.environment, point)) > 0.18) return null;
+    return { point, floor: nearest.floor.id };
   }
   private resize() {
     const { width, height } = this.container.getBoundingClientRect();
@@ -187,11 +222,13 @@ export class Viewer {
   }
   setView(view: Viewer["view"]) {
     if ((view === "map" || view === "top" || view === "side") && this.mode === "world") return;
+    if (view === "first" || view === "follow") { this.floorView = "auto"; this.visibleFloor = ""; }
     this.view = view;
     this.controls.enabled = view !== "map" && view !== "first";
     this.controls.enableRotate = view !== "top";
     this.topControls.enabled = view === "map";
     if (view === "map") {
+      this.floorView = "auto"; this.visibleFloor = "";
       this.attachSimulation(this.topScene);
       if (this.mode === "world-simulation") this.topScene.add(this.navigationMap);
       else { this.topScene.add(this.fixture.root); this.fixture.wallGroup.visible = false; }
@@ -220,14 +257,19 @@ export class Viewer {
         const span = Math.max(size.x, size.z);
         const framing = Math.max(1, 0.9 / this.camera.aspect);
         this.camera.fov = 38;
-        this.controls.target.set(center.x, this.environment.floorY + 0.5, center.z);
+        this.controls.target.set(center.x, this.house ? center.y : this.environment.floorY + 0.5, center.z);
         const offset = view === "top" ? new THREE.Vector3(0, span * 1.55, 0.001)
           : view === "side" ? new THREE.Vector3(span * 0.1, span * 0.42, span * 1.45)
           : new THREE.Vector3(span * 0.85, span * 1.05, span * 1.05);
         this.camera.position.copy(this.controls.target).add(offset.multiplyScalar(framing));
       } else {
-        this.camera.position.set(0, 1.6, 1.4);
-        this.controls.target.set(1, 1, -2);
+        if (this.house) {
+          this.camera.position.fromArray(this.worldAsset!.camera.position);
+          this.controls.target.fromArray(this.worldAsset!.camera.target);
+        } else {
+          this.camera.position.set(0, 1.6, 1.4);
+          this.controls.target.set(1, 1, -2);
+        }
       }
       this.attachSimulation(this.overlayScene);
     } else if (this.mode === "world") {
@@ -302,7 +344,55 @@ export class Viewer {
     this.navigationMap.add(cells);
     this.setView("interior");
   }
+  private clearHouse() {
+    for (const entry of this.houseWorlds.values()) {
+      this.worldScene.remove(entry.world.splats);
+      this.overlayScene.remove(entry.world.depth, entry.world.wire);
+      if (entry.world !== this.world) entry.world.dispose();
+    }
+    this.houseWorlds.clear(); this.house = undefined; this.floorView = "auto"; this.visibleFloor = "";
+    this.stairs.removeFromParent(); disposeStairConnection(this.stairs); this.stairs.clear();
+  }
+  async showHouse(house: House) {
+    const revision = ++this.loadRevision;
+    const results = await Promise.allSettled(house.floors.map(floor => loadWorld(floor.world)));
+    if (revision !== this.loadRevision || results.some(result => result.status === "rejected")) {
+      for (const result of results) if (result.status === "fulfilled") result.value.dispose();
+      if (revision !== this.loadRevision) return false;
+      throw new Error("A house floor could not load. The existing room is still available.");
+    }
+    const { SparkRenderer } = await import("@sparkjsdev/spark");
+    if (revision !== this.loadRevision) {
+      for (const result of results) if (result.status === "fulfilled") result.value.dispose();
+      return false;
+    }
+    this.clearHouse();
+    if (this.world) { this.worldScene.remove(this.world.splats, this.world.cutaway); this.overlayScene.remove(this.world.depth, this.world.wire); this.world.dispose(); }
+    this.house = house;
+    house.floors.forEach((floor, i) => {
+      const world = (results[i] as PromiseFulfilledResult<Awaited<ReturnType<typeof loadWorld>>>).value;
+      this.houseWorlds.set(floor.id, { world, asset: floor.world, floorY: floor.environment.floorY });
+      this.worldScene.add(world.splats); this.overlayScene.add(world.depth, world.wire);
+    });
+    if (!this.spark) { this.spark = new SparkRenderer({ renderer: this.renderer }); this.worldScene.add(this.spark); }
+    for (const link of house.connections) this.stairs.add(buildStairConnection(link));
+    this.overlayScene.add(this.stairs);
+    this.useHouseFloor(house.floors[0].id);
+    this.activateWorldSimulation(house.floors[0].environment);
+    return true;
+  }
+  private useHouseFloor(id: string) {
+    const entry = this.houseWorlds.get(id)!;
+    this.world = entry.world; this.worldAsset = entry.asset; this.cutawayKey = "";
+    this.roomBounds.setFromObject(entry.world.collider);
+  }
+  setFloorView(id: string) {
+    if (!this.house || !["auto", "all", ...this.house.floors.map(floor => floor.id)].includes(id)) return;
+    this.floorView = id; this.visibleFloor = "";
+    if (id !== "auto" && ["first", "follow", "map"].includes(this.view)) this.setView("overview");
+  }
   showFixture() {
+    this.clearHouse();
     this.loadRevision++;
     this.mode = "fixture";
     this.fixture.root.visible = true;
@@ -320,6 +410,7 @@ export class Viewer {
       loaded.dispose();
       return false;
     }
+    this.clearHouse();
     if (this.world) {
       this.worldScene.remove(this.world.splats, this.world.cutaway);
       this.overlayScene.remove(this.world.depth, this.world.wire);
@@ -333,7 +424,7 @@ export class Viewer {
       this.spark = new SparkRenderer({ renderer: this.renderer });
       this.worldScene.add(this.spark);
     }
-    this.worldScene.add(loaded.splats, loaded.cutaway);
+    this.worldScene.add(loaded.splats);
     this.overlayScene.add(loaded.depth, loaded.wire);
     this.mode = "world";
     this.attachSimulation(this.scene);
@@ -348,33 +439,49 @@ export class Viewer {
     return true;
   }
   update(simulation: Simulation) {
+    if (this.house && this.mode === "world-simulation") {
+      if (this.environment.id !== simulation.environment.id) {
+        const view = this.view;
+        this.useHouseFloor(simulation.floorId);
+        this.activateWorldSimulation(simulation.environment);
+        this.setView(view);
+      }
+      const selection = simulation.floorJourney?.phase === "stairs" ? "all" : this.floorView === "auto" ? simulation.floorId : this.floorView;
+      for (const [id, entry] of this.houseWorlds) {
+        const visible = selection === "all" || id === selection;
+        entry.world.splats.visible = visible;
+        entry.world.depth.visible = visible && this.worldDepth;
+        entry.world.wire.visible = visible && this.debugVisible;
+      }
+      this.stairs.visible = this.view !== "map";
+      if (this.visibleFloor !== selection) {
+        this.visibleFloor = selection;
+        this.roomBounds.makeEmpty();
+        for (const [id, entry] of this.houseWorlds) if (selection === "all" || id === selection)
+          this.roomBounds.union(new THREE.Box3().setFromObject(entry.world.collider));
+        if (selection === "all") this.roomBounds.union(new THREE.Box3().setFromObject(this.stairs));
+        if (["top", "side", "overview"].includes(this.view)) this.setView(this.view);
+      }
+    }
     const cut = this.mode === "world-simulation" && this.cutawayEnabled &&
       (this.view === "top" || this.view === "side" || this.view === "overview");
     (this.worldScene.background as THREE.Color).set(cut ? "#edece5" : "#29372f");
+    const entries = this.house ? [...this.houseWorlds.values()] : this.world ? [{world: this.world, floorY: this.environment.floorY}] : [];
     const cutawayKey = `${cut}:${this.cutawayHeight}`;
-    if (this.world && cutawayKey !== this.cutawayKey) {
-      this.world.setCutaway(cut ? this.environment.floorY + this.cutawayHeight : null);
-      this.cutawayKey = cutawayKey;
-    }
-    if (this.world) {
-      // Probe the sightline to the resident after camera orbit/zoom. Ignore surfaces
-      // already removed by the ceiling cut, and low furniture below the viewing target.
-      const focus = new THREE.Vector3(simulation.position.x,
-        floorHeightAt(this.environment, simulation.position) + 1.05, simulation.position.z);
+    for (const {world, floorY} of entries) {
+      if (cutawayKey !== this.cutawayKey) world.setCutaway(cut ? floorY + this.cutawayHeight : null);
+      const focus = new THREE.Vector3(simulation.position.x, simulation.elevation + 1.05, simulation.position.z);
       const sightline = focus.clone().sub(this.camera.position);
       const ray = new THREE.Raycaster(this.camera.position, sightline.clone().normalize(), 0, Math.max(0, sightline.length() - 0.3));
-      const obstruction = cut && this.view !== "top"
-        ? ray.intersectObject(this.world.collider, true).find(hit => hit.point.y > this.environment.floorY + 1.0 && hit.point.y < this.environment.floorY + this.cutawayHeight)
-        : undefined;
-      const facing = this.camera.position.clone().sub(focus);
-      facing.y = 0;
-      facing.normalize();
+      const obstruction = cut && this.view !== "top" ? world.raycast(ray).find(hit => hit.point.y > floorY + 1.0 && hit.point.y < floorY + this.cutawayHeight) : undefined;
+      const facing = this.camera.position.clone().sub(focus); facing.y = 0; facing.normalize();
       const frontPoint = obstruction ? obstruction.point.clone().addScaledVector(facing, -0.25) : focus;
-      this.world.setFrontCut(obstruction ? facing : null, frontPoint, this.environment.floorY);
+      world.setFrontCut(obstruction ? facing : null, frontPoint, floorY);
     }
+    this.cutawayKey = cutawayKey;
     this.resident.root.position.set(
       simulation.position.x,
-      floorHeightAt(this.environment, simulation.position),
+      simulation.elevation,
       simulation.position.z,
     );
     const desired = new THREE.Quaternion().setFromAxisAngle(
@@ -427,8 +534,11 @@ export class Viewer {
         this.debug.add(mesh);
       }
     }
-    this.debug.visible = this.debugVisible;
-    this.navigationMap.visible = this.mode === "world-simulation" && (this.debugVisible || this.view === "map");
+    const activeFloorVisible = !this.house || this.visibleFloor === "all" || this.visibleFloor === simulation.floorId;
+    this.dynamic.visible = activeFloorVisible;
+    this.destinations.visible = activeFloorVisible;
+    this.debug.visible = this.debugVisible && activeFloorVisible;
+    this.navigationMap.visible = this.mode === "world-simulation" && activeFloorVisible && (this.debugVisible || this.view === "map");
     const cells = this.navigationMap.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> | undefined;
     if (cells) cells.material.opacity = this.view === "map" ? 0.85 : 0.3;
     const points = [simulation.position, ...simulation.route];
@@ -440,13 +550,13 @@ export class Viewer {
     });
     this.route.geometry.attributes.position.needsUpdate = true;
     this.route.geometry.setDrawRange(0, Math.min(points.length, 4096));
-    this.route.visible = simulation.route.length > 0;
-    this.resident.root.visible = this.mode !== "world" && this.view !== "first";
+    this.route.visible = simulation.route.length > 0 && activeFloorVisible;
+    this.resident.root.visible = this.mode !== "world" && this.view !== "first" && (!this.house || this.visibleFloor === "all" || this.visibleFloor === simulation.floorId);
     this.camera.up.set(0, 1, 0);
     if (this.mode !== "world" && this.view === "first") {
       const eyeHeight = this.animatedResident?.metadata.height ?? 1.6;
       this.camera.position.set(simulation.position.x,
-        floorHeightAt(this.environment, simulation.position) + eyeHeight * 0.9,
+        simulation.elevation + eyeHeight * 0.9,
         simulation.position.z);
       this.controls.target.copy(this.camera.position).add(new THREE.Vector3(
         Math.sin(simulation.heading), -0.08, Math.cos(simulation.heading),
@@ -463,7 +573,7 @@ export class Viewer {
     if (this.mode !== "world" && this.view === "follow") {
       const target = new THREE.Vector3(
         simulation.position.x,
-        floorHeightAt(this.environment, simulation.position) + 1.1,
+        simulation.elevation + 1.1,
         simulation.position.z,
       );
       const desiredCamera = target.clone().add(new THREE.Vector3(
@@ -472,7 +582,7 @@ export class Viewer {
       if (this.mode === "world-simulation" && this.world) {
         const direction = desiredCamera.clone().sub(target);
         const ray = new THREE.Raycaster(target, direction.clone().normalize(), 0, direction.length());
-        const hit = ray.intersectObject(this.world.collider, true)[0];
+        const hit = this.world.raycast(ray)[0];
         if (hit) desiredCamera.copy(target).addScaledVector(direction.normalize(), Math.max(0.15, hit.distance - 0.15));
       }
       this.camera.position.lerp(desiredCamera, 0.08);
@@ -495,8 +605,7 @@ export class Viewer {
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.autoClear = false;
       this.renderer.clearDepth();
-      this.world.depth.visible = this.worldDepth;
-      this.world.wire.visible = this.debugVisible;
+      if (!this.house) { this.world.depth.visible = this.worldDepth; this.world.wire.visible = this.debugVisible; }
       this.renderer.render(this.overlayScene, this.camera);
       this.renderer.autoClear = true;
     }
@@ -508,6 +617,7 @@ export class Viewer {
     this.controls.dispose();
     this.topControls.dispose();
     disposeMeshes(this.topScene);
+    this.clearHouse();
     this.world?.dispose();
     this.animatedResident?.dispose();
     this.spark?.dispose();

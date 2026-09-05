@@ -1,0 +1,62 @@
+{
+  "id": "tantau-primary-bedroom",
+  "label": "Upstairs primary bedroom",
+  "source": "Photo-guided primary bedroom; unseen surfaces generated, dimensions estimated",
+  "splatUrl": "https://cdn.mint.gg/rad/oak-primary-bedroom-ec575a47012abd14-lod.rad",
+  "colliderUrl": "https://cdn.mint.gg/worlds/oak-primary-bedroom-collider-cc17f449ad2aa966.glb",
+  "metricStatus": "unverified",
+  "splatTransform": {
+    "position": [
+      1.575,
+      4.681,
+      -2.125
+    ],
+    "quaternion": [
+      0,
+      0,
+      1,
+      0
+    ],
+    "scale": 0.35
+  },
+  "colliderTransform": {
+    "position": [
+      1.575,
+      4.681,
+      -2.125
+    ],
+    "quaternion": [
+      0,
+      0,
+      1,
+      0
+    ],
+    "scale": 0.35
+  },
+  "camera": {
+    "position": [
+      0.825,
+      4.85,
+      -1.875
+    ],
+    "target": [
+      2.075,
+      4.7,
+      0.075
+    ]
+  },
+  "cutouts": [
+    {
+      "min": [
+        -0.275,
+        3.25,
+        -3.8
+      ],
+      "max": [
+        0.925,
+        5.75,
+        -2.45
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Tantau upstairs primary bedroom",
+  "source_images": [
+    "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_23_1.jpg",
+    "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_24_1.jpg",
+    "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_25_1.jpg",
+    "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_26_1.jpg"
+  ],
+  "prompt": "A coherent photorealistic upstairs primary bedroom guided by four photographs of the same room. Preserve pale oak plank flooring, warm light walls, white trim, recessed tray ceiling with sculptural dark pendant, light upholstered bed with rust-orange pillows, white bedside cabinets, upholstered bench, patterned rug, timber console, mirror, and the visible window and doorway arrangement. Keep the visible ensuite entrance as a doorway; focus generation on this bedroom and do not invent a complete bathroom or corridor. Eye-level interior with continuous clear walking space from the entrance around the bed toward the ensuite doorway. No people, characters, hazard props, kitchen, extra bedrooms, balcony or additional floor. Keep a normal enclosed ceiling; the simulator handles reversible cutaways. Match the supplied views and materials. This is a photo-guided approximation, not a surveyed reconstruction.",
+  "date": "2026-09-05",
+  "projectId": "zd7498qa69ch5fmxd2fp9jf8fd8dvn9q",
+  "assetId": "j97f28cvbpvs0bd0y18hmwrjen8dv040",
+  "chatUrl": "https://mint.gg/chat/ph77v83t7c3bzvscremsdyn1418dv7me",
+  "mode": "auto",
+  "status": "succeeded",
+  "model": "not exposed by Mint start schema",
+  "metricStatus": "unverified",
+  "resultName": "Oak Primary Bedroom",
+  "runtimeManifest": "runtime-manifest.json"
+}

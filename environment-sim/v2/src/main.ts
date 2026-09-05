@@ -1,9 +1,12 @@
 import { tantauFixture, sampleWorld } from "./environment";
 import type { Scenario, WorldAsset, Environment } from "./contracts";
 import { parseWorldAsset } from "./asset-manifest";
+import { loadHouse } from "./house-loader";
 import { Simulation } from "./simulation";
 import { Viewer } from "./viewer";
 import { loadSimulationEnvironment } from "./simulation-environment";
+import { MovementProgram } from "./movement/program";
+import { mountMovementStudio } from "./movement/studio";
 import { WalkingRoutine } from "./walking-routine";
 import { postures, type Posture } from "./posture";
 import { LIVERIES } from "../../v1-draft/src/robot/livery";
@@ -17,15 +20,15 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <div class="view-controls" aria-label="Camera views"><button data-view="overview" class="active">Overview</button><button data-view="interior">Inside</button><button data-view="follow">Third person</button><button data-view="first">First person</button><button data-view="top">Top down</button><button data-view="side">Side</button><button data-view="map">Map</button></div>
 <div id="cutaway-controls" hidden><label><input type="checkbox" id="cutaway-enabled" checked> Reveal interior</label><label>Wall height <input id="cutaway-height" type="range" min="0.6" max="3.3" step="0.1" value="1.8"><output id="cutaway-value">1.8 m</output></label></div><div id="map-legend" hidden>Navigation map · green: walkable · rings: destinations<br>Blank areas: blocked or unverified · dimensions estimated</div><div id="notice" role="status" hidden></div><div class="scene-footer"><span id="scene-hint">Drag to orbit · Scroll to zoom</span><label><input type="checkbox" id="debug"> Show geometry</label></div></section>
 <aside><div class="eyebrow">SCENARIO STUDIO</div><h2>Everyday journeys.</h2><p class="intro">Explore how a small change in a room changes the way through it.</p>
-<label class="field-label" for="environment">Environment</label><select id="environment"><option value="fixture">V1-style · authored fixture</option><option value="sample">World Labs · sample inspection</option></select>
+<label class="field-label" for="environment">Environment</label><select id="environment"><option value="house">Tantau · connected floors</option><option value="fixture">V1-style · authored fixture</option><option value="sample">World Labs · sample inspection</option></select>
 <p class="source-note" id="environment-note">Estimated layout, inspired by the listing. The realistic room is available in the environment selector.</p>
-<div id="simulation-controls"><button id="routine" class="routine-button">▶ Walk around</button><section class="control-section"><div class="section-number">01 <span>Choose a destination</span></div><div class="destinations">${tantauFixture.destinations.map((target, index) => `<button data-destination="${target.id}"><span>0${index + 1}</span>${target.label}<b>↗</b></button>`).join("")}</div></section>
+<div id="simulation-controls"><section id="floor-controls" hidden><div class="section-number">HOUSE <span id="current-floor">Ground floor</span></div><div class="segmented"><button id="go-ground">Walk downstairs</button><button id="go-upper">Walk upstairs</button></div><label class="field-label" for="floor-view">Floor to view</label><select id="floor-view"><option value="auto">Follow resident's floor</option><option value="ground">Ground floor</option><option value="upper">Second floor</option><option value="all">Both floors and stairs</option></select><p class="source-note">Photo-guided bedroom · authored stair/landing connection · approximate alignment</p><p id="floor-status" class="source-note"></p></section><div id="movement-studio"></div><button id="routine" class="routine-button">▶ Walk around</button><section class="control-section"><div class="section-number">01 <span>Choose a destination</span></div><div class="destinations">${tantauFixture.destinations.map((target, index) => `<button data-destination="${target.id}"><span>0${index + 1}</span>${target.label}<b>↗</b></button>`).join("")}</div></section>
 <section class="control-section"><div class="section-number">02 <span>Change the passage</span></div><div class="segmented"><button data-scenario="clear">Clear</button><button data-scenario="cart">Add cart</button><button data-scenario="blocked">Block</button></div><p id="scenario-description" class="source-note"></p></section>
 <section class="resident-card"><div class="resident-avatar">R</div><div><strong id="resident-name">Unitree G1</strong><small id="resident-model" role="status">Loading robot…</small></div><span class="status-dot"></span></section>
 <label class="field-label" for="posture">Unitree body & movement</label><select id="posture">${Object.entries(postures).map(([id, preset]) => `<option value="${id}">${preset.label}</option>`).join("")}</select><p class="source-note">Authored movement presets, not a medical model or a rule about older adults.</p>
 <label class="speed-label" for="hunch">Posture intensity <output id="hunch-value">100%</output></label><input id="hunch" type="range" min="0" max="1" step="0.1" value="1"><label class="field-label" for="skin">Robot appearance</label><select id="skin">${LIVERIES.map(skin => `<option value="${skin.id}">${skin.label}</option>`).join("")}</select><p class="source-note">1–5: body presets · [ / ]: posture · K: appearance</p>
 <label class="speed-label" for="speed">Walking speed <output id="speed-value">0.77 m/s</output></label><input id="speed" type="range" min="0.2" max="1.6" step="0.01" value="0.77"><p class="source-note" id="keyboard-help">W / ↑ forward · S / ↓ backward · A/D or ←/→ turn. Keyboard takes over the walking routine. Release to stop; choose a destination to resume routes. F: first person · V: third person.</p>
-<section class="control-section"><div class="section-number">03 <span>Fall animations</span></div><label class="field-label" for="fall-kind">Situation</label><select id="fall-kind">${roomFalls.map(fall => `<option value="${fall.id}">${fall.label}</option>`).join("")}</select><p class="source-note" id="fall-description"></p><button id="play-fall" class="routine-button">▶ Play fall</button><p class="source-note">Authored movement at the resident's position. Reset to walk again.</p><p class="source-note">Stairs and upstairs are not yet reconstructed in this room.</p></section>
+<section class="control-section"><div class="section-number">03 <span>Fall animations</span></div><label class="field-label" for="fall-kind">Situation</label><select id="fall-kind">${roomFalls.map(fall => `<option value="${fall.id}">${fall.label}</option>`).join("")}</select><p class="source-note" id="fall-description"></p><button id="play-fall" class="routine-button">▶ Play fall</button><p class="source-note">Authored movement at the resident's position. Reset to walk again.</p><p class="source-note">Fall demos use the active floor. Stair traversal is authored; falls are disabled during a floor transfer.</p></section>
 <div class="metrics"><div><small>SIMULATION TIME</small><strong id="elapsed">00:00</strong></div><div><small>DISTANCE WALKED</small><strong id="distance">0.0 <em>m</em></strong></div></div>
 <label class="field-label" for="playback-speed">Playback speed</label><select id="playback-speed"><option value="1">Normal</option><option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select><div class="playback"><button id="pause">Ⅱ Pause</button><button id="reset">↺ Reset</button></div><p id="status" role="status"></p></div>
 <div id="inspection-controls" hidden><h3>Inspect before enabling routes</h3><p class="source-note">This official sample is not the listing house. Click a surface to place a reference resident. Placement is not a walkability test; scale is unverified.</p><label><input type="checkbox" id="depth" checked> Occlude marker behind geometry</label><p id="surface" class="source-note"></p><a href="/probe.html">Open detailed alignment probe ↗</a></div>
@@ -42,12 +45,14 @@ if (configuredManifest) {
 }
 let simulation = new Simulation(tantauFixture);
 let routine = new WalkingRoutine(simulation);
+let movement = new MovementProgram(simulation, () => routine.stop());
 let loading = false;
 let residentLoading = false;
 const keyboard = createKeyboardControls(window, {
   canDrive: () => !loading && !residentLoading && !simulation.paused && !simulation.fall && viewer.mode !== "world",
   onClear: () => simulation.stopManualMotion(),
   onDriveStart: () => {
+    movement.cancel(false);
     routine.stop();
     if (!simulation.manual && viewer.view !== "first") viewer.setView("follow");
     simulation.setManual();
@@ -59,7 +64,7 @@ const keyboard = createKeyboardControls(window, {
       renderUI();
       return true;
     }
-    if (simulation.fall) return false;
+    if (simulation.fall || simulation.floorJourney) return false;
     const presets: Record<string, Posture> = { Digit1: "grandma", Digit2: "adult", Digit3: "baby", Digit4: "toddler", Digit5: "dog" };
     if (presets[event.code]) { void selectPosture(presets[event.code]); return true; }
     if (event.code === "BracketLeft" || event.code === "BracketRight") {
@@ -75,6 +80,10 @@ const keyboard = createKeyboardControls(window, {
 });
 const clearKeys = () => keyboard.clear();
 const viewer = new Viewer(element("viewport"), tantauFixture);
+const movementStudio = mountMovementStudio(element("movement-studio"), {
+  viewer, simulation: () => simulation, program: () => movement,
+  beforeRun: () => { clearKeys(); routine.stop(); },
+});
 void viewer.loadRobot().then(() => {
   if (viewer.animatedResident && "robot" in viewer.animatedResident)
     element("resident-model").textContent = "Articulated robot · distance-driven gait";
@@ -113,7 +122,19 @@ document
       (button.onclick = () =>
         viewer.setView(button.dataset.view as Viewer["view"])),
   );
+function requestFloor(id: string) {
+  movement.cancel(false);
+  clearKeys(); routine.stop();
+  if (simulation.requestFloor(id, id === "upper" ? "primary" : "living")) {
+    viewer.setFloorView("auto");
+    if (!["first", "follow"].includes(viewer.view)) viewer.setView("overview");
+  }
+}
+element("go-ground").onclick = () => requestFloor("ground");
+element("go-upper").onclick = () => requestFloor("upper");
+element<HTMLSelectElement>("floor-view").onchange = event => viewer.setFloorView((event.target as HTMLSelectElement).value);
 element("play-fall").onclick = () => {
+  movement.cancel(false);
   clearKeys();
   routine.stop();
   simulation.playFall(element<HTMLSelectElement>("fall-kind").value as RoomFallKind);
@@ -124,6 +145,7 @@ element("pause").onclick = () => {
   simulation.paused = !simulation.paused;
 };
 element("reset").onclick = () => {
+  movement.cancel(false);
   clearKeys();
   routine.stop();
   simulation.reset();
@@ -133,7 +155,7 @@ element<HTMLInputElement>("speed").oninput = (event) => {
   simulation.profile.speed = Number((event.target as HTMLInputElement).value);
 };
 async function selectPosture(posture: Posture) {
-  if (residentLoading || simulation.fall || loading) return;
+  if (residentLoading || simulation.fall || simulation.floorJourney || loading) return;
   clearKeys();
   residentLoading = true;
   const previous = simulation.posture;
@@ -186,11 +208,13 @@ element<HTMLInputElement>("depth").onchange = (event) => {
   viewer.worldDepth = (event.target as HTMLInputElement).checked;
 };
 function requestDestination(id: string) {
+  movement.cancel(false);
   clearKeys();
   routine.stop();
   simulation.requestDestination(id);
 }
 element("routine").onclick = () => {
+  movement.cancel(false);
   clearKeys();
   if (routine.active) routine.stop();
   else routine.start();
@@ -204,6 +228,7 @@ function replaceSimulation(environment: Environment) {
   next.playbackSpeed = simulation.playbackSpeed;
   simulation = next;
   routine = new WalkingRoutine(simulation);
+  movement = new MovementProgram(simulation, () => routine.stop());
 }
 let switchRevision = 0;
 async function selectEnvironment(value: string) {
@@ -222,8 +247,17 @@ async function selectEnvironment(value: string) {
     return;
   }
   simulation.paused = true;
-  notice("Loading the room and walking routes…");
+  notice(value === "house" ? "Loading both photo-guided rooms and the stair connection…" : "Loading the room and walking routes…");
   try {
+    if (value === "house") {
+      const house = await loadHouse(import.meta.env.VITE_HOUSE_MANIFEST_URL || "/environment/house/house.json");
+      if (revision !== switchRevision) return;
+      if (!await viewer.showHouse(house) || revision !== switchRevision) return;
+      replaceSimulation(house.floors[0].environment);
+      simulation.configureHouse(house, house.floors[0].id);
+      refreshDestinations(); notice(""); updateEnvironmentUI(house.floors[0].world);
+      return;
+    }
     let asset: WorldAsset = sampleWorld;
     let bundle:
       | {
@@ -331,17 +365,30 @@ const timestamp = (seconds: number) =>
     .padStart(2, "0")}:${Math.floor(seconds % 60)
     .toString()
     .padStart(2, "0")}`;
+let lastEnvironmentId = "";
 let lastEvents: unknown;
 function renderUI() {
-  const canFall = !residentLoading && !postures[simulation.posture].crawl && !!viewer.animatedResident && "setFall" in viewer.animatedResident;
+  movementStudio.update();
+  if (lastEnvironmentId !== simulation.environment.id) {
+    lastEnvironmentId = simulation.environment.id;
+    refreshDestinations();
+    if (viewer.asset && viewer.mode === "world-simulation") updateEnvironmentUI(viewer.asset);
+  }
+  element("floor-controls").hidden = !simulation.house || viewer.mode !== "world-simulation";
+  element("current-floor").textContent = simulation.floorId === "upper" ? "Second floor" : "Ground floor";
+  element("floor-status").textContent = simulation.floorJourney ? simulation.floorJourney.phase === "stairs" ? simulation.floorJourney.manual ? "Manual stairs · W forward · S backward · release to stop" : "Traversing stairs · W/S takes control" : "Walking to the stair entrance" : "Select a floor to walk there.";
+  element<HTMLButtonElement>("go-ground").disabled = simulation.floorId === "ground" || !!simulation.floorJourney || !!simulation.fall;
+  element<HTMLButtonElement>("go-upper").disabled = simulation.floorId === "upper" || !!simulation.floorJourney || !!simulation.fall;
+  element<HTMLSelectElement>("floor-view").value = viewer.floorView;
+  const canFall = !simulation.floorJourney && !residentLoading && !postures[simulation.posture].crawl && !!viewer.animatedResident && "setFall" in viewer.animatedResident;
   element<HTMLButtonElement>("play-fall").disabled = !canFall;
   element("play-fall").textContent = simulation.fall ? "↺ Replay fall" : "▶ Play fall";
   element("fall-description").textContent = canFall
     ? roomFalls.find(fall => fall.id === element<HTMLSelectElement>("fall-kind").value)!.description
-    : postures[simulation.posture].crawl ? "Select a G1 or H1 body for these biped fall animations." : "Fall animations need the articulated robot to finish loading.";
-  element<HTMLButtonElement>("routine").disabled = !!simulation.fall;
-  document.querySelectorAll<HTMLButtonElement>("[data-destination],[data-scenario]").forEach(button => button.disabled = !!simulation.fall);
-  element<HTMLSelectElement>("posture").disabled = !!simulation.fall || residentLoading;
+    : simulation.floorJourney ? "Finish the stair transfer before playing a fall animation." : postures[simulation.posture].crawl ? "Select a G1 or H1 body for these biped fall animations." : "Fall animations need the articulated robot to finish loading.";
+  element<HTMLButtonElement>("routine").disabled = !!simulation.fall || !!simulation.floorJourney;
+  document.querySelectorAll<HTMLButtonElement>("[data-destination],[data-scenario]").forEach(button => button.disabled = !!simulation.fall || !!simulation.floorJourney);
+  element<HTMLSelectElement>("posture").disabled = !!simulation.fall || !!simulation.floorJourney || residentLoading;
   element<HTMLInputElement>("hunch").disabled = !!postures[simulation.posture].crawl || !!simulation.fall;
   element<HTMLInputElement>("hunch").value = String(simulation.hunch);
   element("hunch-value").textContent = `${Math.round(simulation.hunch * 100)}%`;
@@ -376,7 +423,7 @@ function renderUI() {
         fallen: "Fall complete · Replay or reset to walk again",
       }[simulation.status];
   element("scenario-description").textContent = {
-    clear: "The passage beside the island is open.",
+    clear: simulation.floorId === "upper" ? "The bedroom approach is open." : "The passage beside the island is open.",
     cart: "A separate storage cart narrows the passage. Watch the route change.",
     blocked:
       "A barrier spans the room. The resident stops until the route reopens.",
@@ -420,6 +467,8 @@ element("export").onclick = () => {
           assumptions: simulation.environment.provenance,
           environment: simulation.environment,
           world: viewer.asset,
+          house: simulation.house,
+          movement: movement.snapshot(),
           snapshot: simulation.snapshot(),
         },
         null,
@@ -447,6 +496,7 @@ viewer.renderer.setAnimationLoop((now) => {
       simulation.drive(forward, turn, 1 / 60);
       simulation.advance(1 / 60);
       routine.advance();
+      movement.advance();
     }
     accumulator -= 1 / 60;
   }
@@ -461,8 +511,9 @@ if (
   configuredManifest &&
   !new URLSearchParams(location.search).has("fixture")
 ) {
-  element<HTMLSelectElement>("environment").value = "generated";
-  void selectEnvironment("generated");
+  const initial = new URLSearchParams(location.search).has("house") ? "house" : "generated";
+  element<HTMLSelectElement>("environment").value = initial;
+  void selectEnvironment(initial);
 }
 Object.assign(window, {
   houseLab: {
@@ -471,11 +522,13 @@ Object.assign(window, {
     },
     viewer,
     get routine() { return routine; },
+    get movement() { return movement; },
     selectEnvironment,
   },
 });
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
+    movementStudio.dispose();
     keyboard.dispose();
     viewer.renderer.setAnimationLoop(null);
     viewer.dispose();

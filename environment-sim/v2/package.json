@@ -18,7 +18,13 @@
     "test:falls": "node scripts/test-room-falls.mjs",
     "test:unitree": "node scripts/test-unitree.mjs",
     "test:top": "node scripts/test-top-view.mjs",
-    "test:cutaway": "node scripts/test-cutaway.mjs"
+    "test:cutaway": "node scripts/test-cutaway.mjs",
+    "test:house": "tsx --test scripts/test-house.mjs",
+    "fetch-house": "node scripts/fetch-house.mjs",
+    "test:house:browser": "node scripts/test-house-browser.mjs",
+    "test:stairs": "node scripts/check-stair-clearance.mjs",
+    "test:movement": "tsx --test scripts/test-movement.mjs",
+    "test:movement:browser": "node scripts/test-movement-browser.mjs"
   },
   "dependencies": {
     "@sparkjsdev/spark": "2.1.0",

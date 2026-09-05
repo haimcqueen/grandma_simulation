@@ -571,3 +571,7 @@ footer {
 .cutaway-view .scene-footer > span { color: #365d47; text-shadow: none; }
 .view-controls { max-width: calc(100% - 32px); flex-wrap: wrap; justify-content: center; }
 @media (max-width: 700px) { .view-controls { left: 16px; right: 16px; } #cutaway-controls { top: 16px; left: 16px; } }
+
+.movement-studio textarea { width: 100%; resize: vertical; padding: 10px; font: 11px/1.5 ui-monospace, monospace; color: #314939; border: 1px solid #d5dfcd; border-radius: 8px; background: #fffefa; }
+.movement-studio .field-label { margin-top: 10px; }
+.movement-studio input[type="file"] { width: 100%; font-size: 10px; }

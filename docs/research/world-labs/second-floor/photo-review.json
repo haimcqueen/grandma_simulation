@@ -1,0 +1,85 @@
+{
+  "date": "2026-09-05",
+  "status": "research only; no generation started",
+  "zillow": "https://www.zillow.com/homedetails/10536-S-Tantau-Ave-Cupertino-CA-95014/19644938_zpid/",
+  "galleryReviewed": "https://www.redfin.com/CA/Cupertino/10536-S-Tantau-Ave-95014/home/886877",
+  "numbering": "Numbers are MLS CDN filename suffixes, NOT Zillow or Redfin display positions. Zillow gallery denied browser access; same MLS ML82056142 photo set inspected through Redfin. Exact Zillow gallery numbering not verified.",
+  "images": [
+    {
+      "fileNumber": 20,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_20_1.jpg",
+      "assignment": "Upstairs landing",
+      "evidence": "High: visible descending stair opening and elevated outside view."
+    },
+    {
+      "fileNumber": 21,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_21_1.jpg",
+      "assignment": "Likely front upstairs bedroom",
+      "evidence": "High inference: blue headboard, bay-window shape matching plan; matching partial bedroom view beside landing."
+    },
+    {
+      "fileNumber": 22,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_22_1.jpg",
+      "assignment": "Likely middle upstairs bedroom",
+      "evidence": "Medium inference: single window, small room and elevated tree/roof view; exact room assignment not captioned."
+    },
+    {
+      "fileNumber": 23,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_23_1.jpg",
+      "assignment": "Likely upstairs primary bedroom",
+      "evidence": "High inference: same rust-pillow bed, tray ceiling and furnishings across four angles; ensuite connection and window arrangement support plan match."
+    },
+    {
+      "fileNumber": 24,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_24_1.jpg",
+      "assignment": "Likely upstairs primary bedroom",
+      "evidence": "High inference: same rust-pillow bed, tray ceiling and furnishings across four angles; ensuite connection and window arrangement support plan match."
+    },
+    {
+      "fileNumber": 25,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_25_1.jpg",
+      "assignment": "Likely upstairs primary bedroom",
+      "evidence": "High inference: same rust-pillow bed, tray ceiling and furnishings across four angles; ensuite connection and window arrangement support plan match."
+    },
+    {
+      "fileNumber": 26,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_26_1.jpg",
+      "assignment": "Likely upstairs primary bedroom",
+      "evidence": "High inference: same rust-pillow bed, tray ceiling and furnishings across four angles; ensuite connection and window arrangement support plan match."
+    },
+    {
+      "fileNumber": 34,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_34_1.jpg",
+      "assignment": "Likely primary ensuite",
+      "evidence": "High inference: double vanity and shower match upstairs plan and doorway glimpse in bedroom photo 24."
+    },
+    {
+      "fileNumber": 35,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_35_1.jpg",
+      "assignment": "Possible upstairs shared bathroom",
+      "evidence": "Tentative only: tub and single vanity match plan, but similar bathrooms exist downstairs."
+    },
+    {
+      "fileNumber": 19,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_19_1.jpg",
+      "assignment": "Ground-floor stair approach",
+      "evidence": "Useful connection reference; not an upstairs room photo."
+    },
+    {
+      "fileNumber": 42,
+      "url": "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_42_1.jpg",
+      "assignment": "Both-floor plan",
+      "evidence": "Explicit 2nd Floor label, three bedrooms, bathrooms, closet, hall and stairs."
+    }
+  ],
+  "proposedFirstRun": {
+    "name": "Tantau upstairs primary bedroom",
+    "source_images": [
+      "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_23_1.jpg",
+      "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_24_1.jpg",
+      "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_25_1.jpg",
+      "https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_26_1.jpg"
+    ],
+    "prompt": "A coherent photorealistic upstairs primary bedroom guided by four photographs of the same room. Preserve pale oak plank flooring, warm light walls, white trim, recessed tray ceiling with sculptural dark pendant, light upholstered bed with rust-orange pillows, white bedside cabinets, upholstered bench, patterned rug, timber console, mirror, and the visible window and doorway arrangement. Keep the visible ensuite entrance as a doorway; focus generation on this bedroom and do not invent a complete bathroom or corridor. Eye-level interior with continuous clear walking space from the entrance around the bed toward the ensuite doorway. No people, characters, hazard props, kitchen, extra bedrooms, balcony or additional floor. Keep a normal enclosed ceiling; the simulator handles reversible cutaways. Match the supplied views and materials. This is a photo-guided approximation, not a surveyed reconstruction."
+  }
+}

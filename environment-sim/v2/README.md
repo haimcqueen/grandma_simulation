@@ -6,6 +6,8 @@ The v1-style movement loop now runs **inside the photo-guided Tantau room**. The
 
 See the [v2.1 handoff](../../docs/implementation/v2.1/README.md) for realistic camera/cutaway behavior, teammate merge guidance, checks and limitations. V2.1 is an update to this application, not a separate source folder.
 
+The **connected upstairs milestone** is available at **http://127.0.0.1:5174/?house=1**. It adds a photo-guided primary bedroom, an authored U-shaped stair/landing connection, continuous return journeys, and per-floor views. See the [upstairs handoff](../../docs/implementation/upstairs/README.md) for assets, spatial assumptions and extension points.
+
 ## Run and view
 
 ```sh
@@ -32,13 +34,13 @@ The resident automatically visits the kitchen approach, rear passage and living 
 
 **Fall animations** include forward trip, backward slip and sideways fall for the G1/H1. They begin at the current room position, constrain root movement to this room's navigation, stop the walking routine and support pause/replay/reset. Go2 disables biped fall playback. These are authored demos, without automatic hazard detection or ragdoll physics. Custom GLB residents need a fall-pose adapter before their fall control is enabled.
 
-**Stairs remain unfinished in the realistic environment.** The loaded room and navigation have no connected staircase or upstairs. V1's staircase/balcony coordinates must not be copied into this asset. Reconstruct/register those parts, validate their collider and floor transition, then connect traversal. Until then, only the three ground-level fall demos are offered here.
+**Connected stairs are available in the house mode** (`?house=1` or the environment selector). Choose Walk upstairs to approach the stairs, climb to the primary bedroom and continue to the foot of the bed; Walk downstairs returns to the living passage. Stair movement uses an authored continuous path over visible treads, without foot IK or balance physics. Falls, manual driving, body changes and obstacle edits are disabled during a transfer. Pause freezes it; Reset cancels it and returns to the current floor's spawn. The default single-room mode remains available.
 
 Inside and Overview keep the realistic room visible. Follow tracks the resident and tests camera clearance against the collider. Camera drag and zoom remain available. The collision/navigation overlay is for inspecting approximate geometry, not a visual hazard detector.
 
 **Top down**, **Overview** and **Side** render the actual World Labs room with reversible cutaways. Top down looks vertically down; Overview is an oblique dollhouse view; Side gives a lower exterior angle. Reveal interior hides the ceiling/upper surfaces above the wall-height slider. In Overview/Side, a camera-to-resident sightline also reveals obstructing near-side regions and is recomputed as the camera or resident moves, including orbit and zoom. Inside, Third person and First person restore the full room.
 
-These are geometric cuts through splats, not semantic recognition of individual walls. The near-side cut can trim other baked surfaces in the same region; generated edges and unseen surfaces may look incomplete. The original collider/navigation remain unchanged for movement, while the visual depth occluder gets matching cuts. The slider and toggle provide manual control if the automatic reveal is too broad.
+These are geometric cuts through splats, not semantic recognition of individual walls. The near-side cut can trim other baked surfaces in the same region; generated edges and unseen surfaces may look incomplete. Camera cutaways leave movement geometry unchanged, while the visual depth occluder gets matching cuts. House mode also has explicit connector openings that filter collider queries; authored stair geometry supplies support through these openings. The slider and toggle provide manual control if the automatic reveal is too broad.
 
 **Map** keeps the separate orthographic navigation diagram: green cells, resident, destination rings, route and dynamic obstacles. Drag pans and scroll zooms; blank regions are blocked or unverified, not a surveyed floor plan. Changing views preserves the simulation.
 
@@ -76,15 +78,15 @@ For the character teammate, replace `createResident()` while preserving `{ root,
 
 A custom manifest may contain `{ world, environment, resident? }`; otherwise the Tantau asset uses the checked-in room configuration. The default robot and joint metadata are imported from the repository's v1 assets and bundled by Vite; no character service is required. `viewer.loadRobot()` restores the Unitree model. A load failure leaves the procedural resident visible and reports the failure in the character card. Inspect/export live state through the UI or `window.houseLab` (`simulation`, `viewer`, `routine`, `selectEnvironment`). Export contains the world asset, environment and simulation snapshot.
 
-The robot uses the generated room's navigation and sampled floor heights, not v1's unrelated house coordinates. Its joint cycle follows actual travel and turns, reverses when backing up, and stops at obstacles. Pause freezes its pose, and the existing collider depth pass occludes it behind the room. Navigation retains the conservative 0.28 m radius / 1.7 m height envelope; this is not full-body robot collision or balance physics. V1's garden and stairs remain separate. The room-local fall adapter reuses shared articulated poses without importing their original scene coordinates.
+The robot uses the generated room's navigation and sampled floor heights, not v1's unrelated house coordinates. Its joint cycle follows actual travel and turns, reverses when backing up, and stops at obstacles. Pause freezes its pose, and the existing collider depth pass occludes it behind the room. Navigation retains the conservative 0.28 m radius / 1.7 m height envelope; this is not full-body robot collision or balance physics. V1's garden and original stairs remain separate; connected house mode uses its own registered stair path. The room-local fall adapter reuses shared articulated poses without importing their original scene coordinates.
 
 Rendering draws splat color first, then collider depth and the character/props. The invisible collider hides the resident behind furniture/walls without cutting holes in the room image. Spark and Three.js dependencies are pinned; environment loaders start no independent loop.
 
 ## Spatial assumptions
 
-Meters are estimated, seconds use a fixed 1/60 simulation step, right-handed Y-up, quaternion order `[x,y,z,w]`. Both source assets use X rotation 180°, scale 1.905 and position `[0,1.2954,0]`. This normalizes an inferred 1.6-unit floor/ceiling separation against the listing's 10-foot ceiling. `metricStatus` stays `unverified`.
+Meters are estimated, seconds use a fixed 1/60 simulation step, right-handed Y-up, quaternion order `[x,y,z,w]`. The ground room's appearance and collider use X rotation 180°, scale 1.905 and position `[0,1.2954,0]`. This normalizes an inferred 1.6-unit floor/ceiling separation against the listing's 10-foot ceiling. `metricStatus` stays `unverified`.
 
-The navigation grid has 520 accepted cells, with destinations in its largest connected area, at 0.15 m spacing for radius 0.28 m and height 1.7 m. The bake includes cell-diagonal clearance and floor support checks, tolerating geometry within 0.12 m of the floor as noise. It does not establish whole-house accessibility or small-trip-hazard detection. Unseen rooms, dimensions and some furnishings are generated approximations; some views soften or distort. No new environment generation was needed for this integration.
+The navigation grid has 520 accepted cells, with destinations in its largest connected area, at 0.15 m spacing for radius 0.28 m and height 1.7 m. The bake includes cell-diagonal clearance and floor support checks, tolerating geometry within 0.12 m of the floor as noise. It does not establish whole-house accessibility or small-trip-hazard detection. Unseen rooms, dimensions and some furnishings are generated approximations; some views soften or distort. The connected house mode adds a separately generated bedroom with its own transform and grid; consult its handoff before changing placement.
 
 Rebake with `node scripts/bake-navigation.mjs world.json collider.glb calibration.json navigation.json` after changing the source geometry or movement dimensions. Verify anchors again after recalibration. Furniture baked into the splats cannot be moved by merely moving a proxy.
 
@@ -98,6 +100,10 @@ npm run test:combined
 npm run test:top
 npm run test:cutaway
 npm run test:tantau
+npm run test:house
+npm run test:house:browser
+# After npm run fetch-house:
+npm run test:stairs
 # Also download the optional sample for these:
 npm run test:browser
 npm run test:environment

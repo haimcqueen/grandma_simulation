@@ -1,0 +1,56 @@
+{
+  "id": "tantau-primary-navigation",
+  "label": "Upstairs primary bedroom",
+  "provenance": "Photo-guided bedroom, generated unseen surfaces and estimated scale; authored doorway connection.",
+  "floor": {
+    "x": 1.775,
+    "z": 0.225,
+    "width": 6.8,
+    "depth": 7.5
+  },
+  "floorY": 3.4,
+  "objects": [],
+  "spawn": {
+    "x": 0.325,
+    "z": -2.575
+  },
+  "destinations": [
+    {
+      "id": "landing",
+      "label": "Bedroom entrance",
+      "x": 0.325,
+      "z": -2.575
+    },
+    {
+      "id": "primary",
+      "label": "Foot of bed",
+      "x": 1.225,
+      "z": -1.175
+    },
+    {
+      "id": "window",
+      "label": "Bedside passage",
+      "x": 3.425,
+      "z": 0.125
+    }
+  ],
+  "passage": {
+    "x": 0.625,
+    "z": -1.925
+  },
+  "scenarioFootprints": {
+    "cart": {
+      "x": 0.625,
+      "z": -1.925,
+      "width": 0.45,
+      "depth": 0.4
+    },
+    "blocked": {
+      "x": 0.825,
+      "z": -1.925,
+      "width": 2.5,
+      "depth": 0.25
+    }
+  },
+  "navigationUrl": "/environment/house/upper-navigation.json"
+}

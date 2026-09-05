@@ -6,3 +6,11 @@ import type { Condition, HazardZone } from "../../v1-draft/src/hazards";
 
 export type HazardProfile = "auto" | "off" | Condition;
 export type RoomHazardZone = HazardZone & { propScale?: number };
+
+/** Only authored floor obstacles cause automatic falls; other hazards remain alerts. */
+export const hazardFallKinds: Readonly<Record<string, import("./falls").RoomFallKind>> = {
+  loose_rug: "trip",
+  loose_cords: "trip",
+  small_objects_reachable: "sideways",
+  slippery_floor: "patio",
+};

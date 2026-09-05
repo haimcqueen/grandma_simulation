@@ -10,6 +10,7 @@ try {
   await mkdir('.artifacts', { recursive: true });
   await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/');
   await page.waitForFunction(() => window.houseLab?.viewer.mode === 'world-simulation' && window.houseLab.viewer.animatedResident?.robot, undefined, { timeout: 90000 });
+  await page.locator('#hazard-falls').uncheck();
   await page.locator('#reset').click();
   assert.equal(await page.evaluate(() => window.houseLab.viewer.hazards.root.children.length), 3);
   await page.locator('[data-view="first"]').click();

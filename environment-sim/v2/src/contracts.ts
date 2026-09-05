@@ -41,6 +41,8 @@ export type SimulationEvent = {
     | "manualControlStarted"
     | "fallStarted"
     | "fallCompleted"
+    | "recoveryStarted"
+    | "recoveryCompleted"
     | "hazardEncountered"
     | "routeStarted"
     | "routeReplanned"

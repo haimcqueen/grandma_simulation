@@ -54,7 +54,7 @@ Set `VITE_WORLD_MANIFEST_URL=/worlds/tantau-local.json` in `.env.local`, then re
 | [ / ] | Decrease / increase posture intensity |
 | K | Cycle appearance |
 
-Release movement keys to brake. Movement takes over from the automatic tour. Form fields consume their own editing keys; body selection blurs the dropdown so arrows can immediately drive. Pause, reset, blur and environment/body changes clear held keys. After a fall, replay or reset before walking again.
+Release movement keys to brake. Movement takes over from the automatic tour. Form fields consume their own editing keys; body selection blurs the dropdown so arrows can immediately drive. Pause, reset, blur and environment/body changes clear held keys. Grandma automatically falls and gets up at configured floor hazards during arrow/WASD or route movement; controls/routes resume after recovery. Explicit Play fall demos still require replay or reset. See the hazard guide for the toggle and module contract.
 
 ## Module map and ownership
 
@@ -119,7 +119,7 @@ function disposeResident() {
 }
 ```
 
-The adapter returns `root`, `robot`, `metadata`, `setMotion`, `setFall`, `update` and `dispose`. Roots are feet-origin, Y-up, forward +Z. Position is in metres, heading in radians, time in seconds and gait phase in cycles. `setMotion` accepts `(posture, gaitPhase, postureIntensity = 1, skin = "factory")`. Advance phase from actual travel and the preset stride length; reverse travel reverses phase. `setFall` accepts `{ kind, elapsed }` or `null`; the host owns its clock and root travel.
+The adapter returns `root`, `robot`, `metadata`, `setMotion`, `setFall`, `update` and `dispose`. Roots are feet-origin, Y-up, forward +Z. Position is in metres, heading in radians, time in seconds and gait phase in cycles. `setMotion` accepts `(posture, gaitPhase, postureIntensity = 1, skin = "factory")`. Advance phase from actual travel and the preset stride length; reverse travel reverses phase. `setFall` accepts `{ kind, elapsed, autoRecover?: boolean }` or `null`; the host owns its clock and root travel.
 
 Use a preset matching the loaded rig. Changing G1 to H1/Go2 requires loading the matching body and joints, not merely changing the motion preset. Height-changing presets also require a reload. V2's body selector handles that transaction and preserves position, skin and pause state.
 
@@ -187,6 +187,6 @@ npm run test:combined
 
 Browser checks use Playwright with installed Google Chrome. Set `BASE_URL` to use another server. They cover six body/movement presets, arrow movement in both camera modes, braking, focus/blur, reusable keyboard cleanup, posture/skin changes, falls, pause/replay/reset, routes, obstacles, room occlusion and mobile layout. The first-person fall check verifies actual rendered pixel variation before capturing the streamed room. Evidence goes to ignored `.artifacts/`.
 
-The v2 simulation suite contains 16 tests. After extracting shared fall poses, v1's build and 32 focused fall/floor/manual/gait tests also passed. The earlier v1 full suite had an intermittent randomized swarm threshold failure; it was not changed or claimed fixed.
+The v2 simulation and hazard suites contain 27 tests, including automatic fall/recovery lifecycle and pose continuity. `npm run test:recovery` checks keyboard encounters and get-up in both camera modes. After extracting shared fall poses, v1's build and 32 focused fall/floor/manual/gait tests also passed. The earlier v1 full suite had an intermittent randomized swarm threshold failure; it was not changed or claimed fixed.
 
 See also the [v2 app README](../environment-sim/v2/README.md), [implementation handoff](implementation/v2/README.md) and [house history](TEAM-HANDOFF-HOUSE.md). This guide is the current entry point for collaborators working on Unitree in the realistic environment.

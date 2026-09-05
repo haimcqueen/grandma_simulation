@@ -166,7 +166,8 @@ test("grid navigation avoids blocked cells and rejects unsupported clearance", a
 
 const { readFileSync } = await import('node:fs');
 const roomDescriptor = JSON.parse(readFileSync(new URL('../public/environment/tantau-simulation.json', import.meta.url)));
-const realisticRoom = { ...roomDescriptor, navigation: JSON.parse(readFileSync(new URL('../public/environment/tantau-navigation.json', import.meta.url))) };
+// Navigation-only fixture. Automatic encounters/recovery are covered in test-hazards.mjs.
+const realisticRoom = { ...roomDescriptor, hazardZones: [], navigation: JSON.parse(readFileSync(new URL('../public/environment/tantau-navigation.json', import.meta.url))) };
 test('keyboard takeover cancels routes, ramps speed, brakes and preserves pause', () => {
   const simulation = new Simulation(realisticRoom);
   simulation.requestDestination('kitchen');

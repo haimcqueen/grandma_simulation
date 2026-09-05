@@ -7,7 +7,7 @@ import { lerpStance, UPRIGHT } from "../../v1-draft/src/robot/stance";
 import { disposeMeshes } from "./scene-resources";
 import type { RobotAsset } from "./robot-assets";
 import { poseFall } from "../../v1-draft/src/robot/fall-motion";
-import { roomFallFrame, type RoomFall } from "./falls";
+import { roomFallFrame, poseRoomRecovery, type RoomFall } from "./falls";
 
 export type UnitreeResident = Awaited<ReturnType<typeof loadRobotResident>>;
 
@@ -55,7 +55,9 @@ export async function loadRobotResident(initialPosture: Posture, asset: RobotAss
       robot.root.rotation.set(0, 0, 0);
       if (fall) {
         const frame = roomFallFrame(fall);
-        const { pitch, roll } = poseFall(robot, stance, phase, time, motion, 0, frame.progress, 0, fall.kind);
+        const { pitch, roll } = frame.recovery > 0
+          ? poseRoomRecovery(robot, stance, phase, time, motion, 0, frame.recovery, 0, fall.kind)
+          : poseFall(robot, stance, phase, time, motion, 0, frame.progress, 0, fall.kind);
         robot.root.rotation.set(pitch, 0, roll);
         root.getWorldPosition(worldPosition);
         robot.settleOnGround(worldPosition.y);

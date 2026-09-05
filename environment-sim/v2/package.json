@@ -19,7 +19,8 @@
     "test:unitree": "node scripts/test-unitree.mjs",
     "test:hazards": "node scripts/test-hazards-browser.mjs",
     "test:top": "node scripts/test-top-view.mjs",
-    "test:cutaway": "node scripts/test-cutaway.mjs"
+    "test:cutaway": "node scripts/test-cutaway.mjs",
+    "test:recovery": "node scripts/test-hazard-recovery.mjs"
   },
   "dependencies": {
     "@sparkjsdev/spark": "2.1.0",

@@ -22,11 +22,11 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <p class="source-note" id="environment-note">Estimated layout, inspired by the listing. The realistic room is available in the environment selector.</p>
 <div id="simulation-controls"><button id="routine" class="routine-button">▶ Walk around</button><section class="control-section"><div class="section-number">01 <span>Choose a destination</span></div><div class="destinations">${tantauFixture.destinations.map((target, index) => `<button data-destination="${target.id}"><span>0${index + 1}</span>${target.label}<b>↗</b></button>`).join("")}</div></section>
 <section class="control-section"><div class="section-number">02 <span>Change the passage</span></div><div class="segmented"><button data-scenario="clear">Clear</button><button data-scenario="cart">Add cart</button><button data-scenario="blocked">Block</button></div><p id="scenario-description" class="source-note"></p></section>
-<section class="control-section" id="hazard-controls"><div class="section-number">HAZARDS <span>Explore nearby objects</span></div><label class="field-label" for="hazard-profile">Scenario profile</label><select id="hazard-profile"><option value="auto">Match body preset</option><option value="elderly">Older-adult scenario</option><option value="toddler">Toddler scenario</option><option value="off">Off</option></select><label class="source-note"><input type="checkbox" id="hazard-props" checked> Show demo hazard objects</label><p id="hazard-profile-note" class="source-note"></p><p class="source-note">Placed demo rug, cable and small objects. Proximity alerts use authored zones and ratings; they do not detect hazards in the room images or trigger falls.</p></section><section class="resident-card"><div class="resident-avatar">R</div><div><strong id="resident-name">Unitree G1</strong><small id="resident-model" role="status">Loading robot…</small></div><span class="status-dot"></span></section>
+<section class="control-section" id="hazard-controls"><div class="section-number">HAZARDS <span>Explore nearby objects</span></div><label class="field-label" for="hazard-profile">Scenario profile</label><select id="hazard-profile"><option value="auto">Match body preset</option><option value="elderly">Older-adult scenario</option><option value="toddler">Toddler scenario</option><option value="off">Off</option></select><label class="source-note"><input type="checkbox" id="hazard-props" checked> Show demo hazard objects</label><label class="source-note"><input type="checkbox" id="hazard-falls" checked> Grandma falls and gets up at hazards</label><p id="hazard-profile-note" class="source-note"></p><p class="source-note">Grandma trips on the rug or cable and loses balance over small objects, then gets up and continues. These are placed demo hazards.</p></section><section class="resident-card"><div class="resident-avatar">R</div><div><strong id="resident-name">Unitree G1</strong><small id="resident-model" role="status">Loading robot…</small></div><span class="status-dot"></span></section>
 <label class="field-label" for="posture">Unitree body & movement</label><select id="posture">${Object.entries(postures).map(([id, preset]) => `<option value="${id}">${preset.label}</option>`).join("")}</select><p class="source-note">Authored movement presets, not a medical model or a rule about older adults.</p>
 <label class="speed-label" for="hunch">Posture intensity <output id="hunch-value">100%</output></label><input id="hunch" type="range" min="0" max="1" step="0.1" value="1"><label class="field-label" for="skin">Robot appearance</label><select id="skin">${LIVERIES.map(skin => `<option value="${skin.id}">${skin.label}</option>`).join("")}</select><p class="source-note">1–5: body presets · [ / ]: posture · K: appearance</p>
 <label class="speed-label" for="speed">Walking speed <output id="speed-value">0.77 m/s</output></label><input id="speed" type="range" min="0.2" max="1.6" step="0.01" value="0.77"><p class="source-note" id="keyboard-help">W / ↑ forward · S / ↓ backward · A/D or ←/→ turn. Keyboard takes over the walking routine. Release to stop; choose a destination to resume routes. F: first person · V: third person.</p>
-<section class="control-section"><div class="section-number">03 <span>Fall animations</span></div><label class="field-label" for="fall-kind">Situation</label><select id="fall-kind">${roomFalls.map(fall => `<option value="${fall.id}">${fall.label}</option>`).join("")}</select><p class="source-note" id="fall-description"></p><button id="play-fall" class="routine-button">▶ Play fall</button><p class="source-note">Authored movement at the resident's position. Reset to walk again.</p><p class="source-note">Stairs and upstairs are not yet reconstructed in this room.</p></section>
+<section class="control-section"><div class="section-number">03 <span>Fall animations</span></div><label class="field-label" for="fall-kind">Situation</label><select id="fall-kind">${roomFalls.map(fall => `<option value="${fall.id}">${fall.label}</option>`).join("")}</select><p class="source-note" id="fall-description"></p><button id="play-fall" class="routine-button">▶ Play fall</button><p class="source-note">Manual demos: replay or reset. Hazard falls: get up and continue automatically.</p><p class="source-note">Stairs and upstairs are not yet reconstructed in this room.</p></section>
 <div class="metrics"><div><small>SIMULATION TIME</small><strong id="elapsed">00:00</strong></div><div><small>DISTANCE WALKED</small><strong id="distance">0.0 <em>m</em></strong></div></div>
 <label class="field-label" for="playback-speed">Playback speed</label><select id="playback-speed"><option value="1">Normal</option><option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select><div class="playback"><button id="pause">Ⅱ Pause</button><button id="reset">↺ Reset</button></div><p id="status" role="status"></p></div>
 <div id="inspection-controls" hidden><h3>Inspect before enabling routes</h3><p class="source-note">This official sample is not the listing house. Click a surface to place a reference resident. Placement is not a walkability test; scale is unverified.</p><label><input type="checkbox" id="depth" checked> Occlude marker behind geometry</label><p id="surface" class="source-note"></p><a href="/probe.html">Open detailed alignment probe ↗</a></div>
@@ -125,6 +125,7 @@ element<HTMLInputElement>("hazard-props").onchange = event => {
   viewer.hazardPropsVisible = (event.target as HTMLInputElement).checked;
   (event.target as HTMLInputElement).blur();
 };
+element("hazard-falls").onchange = () => { simulation.autoHazardFalls = element<HTMLInputElement>("hazard-falls").checked; };
 element("play-fall").onclick = () => {
   clearKeys();
   routine.stop();
@@ -215,6 +216,7 @@ function replaceSimulation(environment: Environment) {
   next.skin = simulation.skin;
   next.playbackSpeed = simulation.playbackSpeed;
   next.setHazardProfile(simulation.hazardProfile);
+  next.autoHazardFalls = simulation.autoHazardFalls;
   simulation = next;
   routine = new WalkingRoutine(simulation);
 }
@@ -360,6 +362,7 @@ function renderUI() {
       element("hazard-context").textContent = `Authored ${hazard.condition === "elderly" ? "older-adult" : "toddler"} scenario · proximity alert`;
     }
   }
+  element<HTMLInputElement>("hazard-falls").checked = simulation.autoHazardFalls;
   element<HTMLSelectElement>("hazard-profile").value = simulation.hazardProfile;
   const condition = simulation.hazardProfile === "auto" ? conditionForSubject(simulation.posture) : simulation.hazardProfile;
   element("hazard-profile-note").textContent = !(simulation.environment.hazardZones?.length)
@@ -408,7 +411,8 @@ function renderUI() {
         arrived: "Destination reached",
         blocked: "No clear route — remove the obstruction",
         falling: simulation.fall ? roomFallFrame(simulation.fall).stage : "Falling",
-        fallen: "Fall complete · Replay or reset to walk again",
+        fallen: simulation.fall?.autoRecover ? "Resting briefly before getting up" : "Fall complete · Replay or reset to walk again",
+        recovering: simulation.fall ? roomFallFrame(simulation.fall).stage : "Standing up",
       }[simulation.status];
   element("scenario-description").textContent = {
     clear: "The passage beside the island is open.",

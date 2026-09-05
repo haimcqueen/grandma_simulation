@@ -162,8 +162,12 @@ export async function loadWorld(asset: WorldAsset) {
       replacementMax.value[replacementCount.value++].copy(bounds.max);
       const edit = new SplatEdit({ name: "Replaced furniture", softEdge: 0 });
       const box = new SplatEditSdf({ type: SplatEditSdfType.BOX, opacity: 0 });
-      bounds.getCenter(box.position);
-      bounds.getSize(box.scale).multiplyScalar(0.5);
+      // Retain the photographed floor; only erase the furniture above it.
+      // Collider removal still uses the full region to clear noisy scan triangles.
+      const visualBounds = bounds.clone();
+      visualBounds.min.y = Math.max(visualBounds.min.y, floorY + 0.07);
+      visualBounds.getCenter(box.position);
+      visualBounds.getSize(box.scale).multiplyScalar(0.5);
       edit.add(box); edit.sdfs = [box]; cutaway.add(edit); cutaway.updateMatrixWorld(true);
       // Register explicitly so this repair stays scoped to its own world.
       splats.edits = [...(splats.edits ?? []), edit];

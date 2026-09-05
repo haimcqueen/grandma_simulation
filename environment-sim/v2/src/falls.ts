@@ -8,7 +8,7 @@ export const roomFalls = [
   { id: "sideways", label: "Lose balance sideways", description: "Sway sideways and land on the hip and shoulder." },
 ] as const;
 export type RoomFallKind = typeof roomFalls[number]["id"];
-export type RoomFall = { kind: RoomFallKind; elapsed: number; hazard?: FallHazard; autoRecover?: boolean; obstacle?: { travel: number; lateral?: number; solidId?: string } };
+export type RoomFall = { kind: RoomFallKind; elapsed: number; hazard?: FallHazard; autoRecover?: boolean; obstacle?: { travel: number; lateral?: number; solidId?: string; support?: import("./obstacle-support").ObstacleSupport } };
 export const RECOVERY_REST = 1.1;
 export const RECOVERY_DURATION = 3.8;
 export const roomFallFrame = (fall: RoomFall) => {
@@ -20,9 +20,14 @@ export const roomFallFrame = (fall: RoomFall) => {
     frame.lateral = stepAside * stepAside * (3 - 2 * stepAside) * (fall.obstacle.lateral ?? 0);
     frame.elevation = 0;
     if (frame.progress < 0.3) frame.stage = "Foot catches the ottoman";
+    else if (fall.obstacle.support) frame.stage = frame.progress < 1 ? "Tipping forward over the ottoman" : "Supported across the ottoman";
   }
   const recovery = fall.autoRecover
     ? Math.max(0, Math.min(1, (fall.elapsed - roomFallDuration(fall.kind) - RECOVERY_REST) / RECOVERY_DURATION)) : 0;
+  if (fall.obstacle?.support && recovery > 0) {
+    const retreat = Math.min(1, recovery / 0.65);
+    frame.forward *= 1 - retreat * retreat * (3 - 2 * retreat);
+  }
   return { ...frame, recovery, stage: recovery > 0
     ? recovery < 0.35 ? "Bracing to get up" : recovery < 0.7 ? "Pushing up onto one knee" : "Standing and finding balance"
     : frame.stage };

@@ -10,7 +10,7 @@ try {
  assert.equal(await page.locator('aside').count(),0);
  assert.equal(await page.locator('.fall-danger').isVisible(),false);
  assert.equal(await page.evaluate(()=>window.houseLab.viewer.roomObjects.children.length),1);
- assert.equal(await page.evaluate(()=>window.houseLab.viewer.floorRepairs.children.length),1);
+ assert.equal(await page.evaluate(()=>window.houseLab.viewer.floorRepairs.children.length),0);
  assert.equal(await page.evaluate(()=>!!window.houseLab.viewer.world.cutaway.getObjectByName('Replaced furniture')),true);
  for (const view of ['follow','first']) {
   await page.keyboard.press('KeyR');
@@ -41,6 +41,16 @@ try {
   assert.equal(await page.locator('[data-rating="intensity"] strong').innerText(),'Moderate');
   assert.equal(await page.locator('[data-rating="likelihood"] .filled').count(),3);
   assert.equal(await page.locator('[data-rating="intensity"] .filled').count(),2);
+  const over = await page.evaluate(async()=>{
+   const THREE=await import('/node_modules/three/build/three.module.js');
+   const {simulation:s,viewer:v}=window.houseLab;
+   const box=new THREE.Box3().setFromObject(v.animatedResident.robot.root);
+   return {position:s.position, support:s.fall.obstacle.support, lateral:s.fall.obstacle.lateral,
+    min:box.min.toArray(),max:box.max.toArray()};
+  });
+  assert.ok(over.support && over.min[2] < -2.44 && over.max[2] > -3.24,'Body extends across the cushion');
+  assert.equal(over.lateral,0,'No sideways fall displacement');
+  assert.ok(over.position.z < -2.5,'Forward motion carries the body across the ottoman');
   await page.screenshot({path:`.artifacts/ottoman-${view}-fallen.png`});
   await page.waitForFunction(()=>window.houseLab.simulation.status==='recovering');
   assert.equal(await page.locator('.fall-danger [data-phase]').innerText(),'Getting back up');
@@ -50,6 +60,7 @@ try {
   assert.ok(result.check.frames>60);
   assert.equal(result.check.maxOverlap,0,'No posed body link enters the solid ottoman');
   assert.equal(result.state.manual,true);
+  assert.ok(Math.abs(result.state.position.z + 2.1111666667)<.04,'Recovery returns to the original floor contact');
   assert.equal(result.view,view);
   assert.equal(result.state.events.filter(e=>e.type==='fallStarted').length,1);
   const before=result.state.position;
@@ -69,18 +80,13 @@ try {
   assert.equal(await page.evaluate(()=>window.houseLab.viewer.roomObjects.parent===
    (window.houseLab.viewer.view==='map'?window.houseLab.viewer.topScene:window.houseLab.viewer.overlayScene)),true);
  }
- // Sample the repaired floor in a repeatable close view; the old gaps were dark green.
- const colors=await page.evaluate(async()=>{
-  const THREE=await import('/node_modules/three/build/three.module.js');const {viewer:v,simulation:s}=window.houseLab;
+ // The original scanned floor is retained; no artificial carpet patch is drawn.
+ await page.evaluate(()=>{
+  const {viewer:v,simulation:s}=window.houseLab;
   v.setView('interior');v.camera.position.set(.7,1.25,0);v.controls.target.set(.64,.25,-2.84);v.controls.update();v.update(s);
-  const gl=v.renderer.getContext(),size=v.renderer.getDrawingBufferSize(new THREE.Vector2());
-  return [[.9,.023,-2.02],[1.1,.023,-2.15],[.15,.023,-3.2]].map(point=>{
-   const projected=new THREE.Vector3(...point).project(v.camera),pixel=new Uint8Array(4);
-   gl.readPixels(Math.round((projected.x+1)/2*size.x),Math.round((projected.y+1)/2*size.y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
-   return [...pixel];
-  });
  });
- for(const color of colors) assert.ok(color.slice(0,3).every(c=>c>80),`Floor gap: ${color}`);
+ await page.waitForTimeout(100);
+ assert.equal(await page.evaluate(()=>window.houseLab.viewer.floorRepairs.children.length),0);
  await page.screenshot({path:'.artifacts/ottoman-repaired-floor.png'});
  // A manual fall must not inherit the previous hazard's rating.
  await page.evaluate(()=>window.houseLab.simulation.playFall('sideways'));
@@ -95,5 +101,5 @@ try {
  await page.waitForFunction(()=>document.querySelector('.fall-danger').hidden);
  assert.equal(await page.locator('.fall-danger').isVisible(),false);
  assert.deepEqual(errors,[]);
- console.log('Ottoman passed: one replacement, repaired floor, solid walking collision, manual contact/fall/recovery in first and third person, body-link clearance and all views.');
+ console.log('Ottoman passed: one replacement, original floor without a patch, solid walking collision, manual contact/fall/recovery in first and third person, body-link clearance and all views.');
 } finally {await browser.close();}

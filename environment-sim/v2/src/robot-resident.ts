@@ -8,6 +8,7 @@ import { disposeMeshes } from "./scene-resources";
 import type { RobotAsset } from "./robot-assets";
 import { poseFall } from "../../v1-draft/src/robot/fall-motion";
 import { roomFallFrame, poseRoomRecovery, type RoomFall } from "./falls";
+import { createObstacleSupport } from "./obstacle-support";
 
 export type UnitreeResident = Awaited<ReturnType<typeof loadRobotResident>>;
 
@@ -29,6 +30,7 @@ export async function loadRobotResident(initialPosture: Posture, asset: RobotAss
   let postureChanged = true;
   let fall: RoomFall | null = null;
   const worldPosition = new THREE.Vector3();
+  const supportOnObstacle = createObstacleSupport();
   pose(robot, postures.grandma.stance, 0, 0, 1, postures.grandma.motion, 0);
   robot.settleOnGround();
   return {
@@ -61,6 +63,7 @@ export async function loadRobotResident(initialPosture: Posture, asset: RobotAss
         robot.root.rotation.set(pitch, 0, roll);
         root.getWorldPosition(worldPosition);
         robot.settleOnGround(worldPosition.y + frame.elevation);
+        if (fall.obstacle?.support) supportOnObstacle(robot.root, fall.obstacle.support);
         return;
       }
       const bodyPose = crawlStyle ? crawl(robot, crawlStyle, phase, time, 0, blend)

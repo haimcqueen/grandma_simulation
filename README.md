@@ -4,7 +4,7 @@
 
 **Collaborators:** start with the [Unitree integration and reuse guide](docs/UNITREE-COLLABORATOR-GUIDE.md).
 
-A full-screen realistic room with the team's Unitree G1 grandma. Walk with arrow keys or WASD and choose First person, Third person, Wide or Map. The default experience has no automatic walking, sidebar or added floor props. Shared simulation and character modules remain reusable in **`environment-sim/v2/`**.
+A full-screen realistic room with the team's Unitree G1 grandma. Walk with arrow keys or WASD and choose First person, Third person, Wide or Map. The default experience has no automatic walking or sidebar; the teammate's textured ottoman replaces the scanned object and supplies a single contact hazard. Shared simulation and character modules remain reusable in **`environment-sim/v2/`**.
 
 ## Quick start
 

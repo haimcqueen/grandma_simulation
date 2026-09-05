@@ -60,7 +60,7 @@ export async function loadRobotResident(initialPosture: Posture, asset: RobotAss
           : poseFall(robot, stance, phase, time, motion, 0, frame.progress, 0, fall.kind);
         robot.root.rotation.set(pitch, 0, roll);
         root.getWorldPosition(worldPosition);
-        robot.settleOnGround(worldPosition.y);
+        robot.settleOnGround(worldPosition.y + frame.elevation);
         return;
       }
       const bodyPose = crawlStyle ? crawl(robot, crawlStyle, phase, time, 0, blend)

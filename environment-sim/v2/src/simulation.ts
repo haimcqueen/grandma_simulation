@@ -197,11 +197,31 @@ export class Simulation {
     const hit = moved && this.autoHazardFalls && this.posture === "grandma"
       ? hazardAt(this.position, condition, this.environment.hazardZones ?? []) : null;
     const kind = hit && hazardFallKinds[hit.zone.hazardId];
-    if (hit && kind && !this.triggeredZones.has(`${this.floorId}:${zoneKey(hit.zone)}`)) {
+    const contact = hit && this.environment.hazardZones?.find(zone => zoneKey(zone) === zoneKey(hit.zone))?.obstacle;
+    const solid = contact?.solidId ? this.obstacles.find(object => object.id === contact.solidId) : null;
+    const touching = !solid || (Math.abs(this.position.x - solid.x) <= solid.width / 2 + this.profile.radius + 0.06
+      && Math.abs(this.position.z - solid.z) <= solid.depth / 2 + this.profile.radius + 0.06);
+    if (hit && kind && touching && !this.triggeredZones.has(`${this.floorId}:${zoneKey(hit.zone)}`)) {
+      let obstacleFall: RoomFall["obstacle"];
+      const obstacle = this.environment.hazardZones?.find(zone => zoneKey(zone) === zoneKey(hit.zone))?.obstacle;
+      if (obstacle) {
+        // A solid object cannot be crossed. Find clear floor beside the contact point.
+        const candidates = [{ travel: 0, lateral: -1.05 }, { travel: 0, lateral: 1.05 },
+          { travel: -0.45, lateral: -0.9 }, { travel: -0.45, lateral: 0.9 }];
+        const landing = candidates.find(candidate => {
+          const next = { x: this.position.x + Math.sin(this.heading) * candidate.travel + Math.cos(this.heading) * candidate.lateral,
+            z: this.position.z + Math.cos(this.heading) * candidate.travel - Math.sin(this.heading) * candidate.lateral };
+          return distance(next, hit.zone) > 0.9
+            && segmentClear(this.environment, this.position, next, this.obstacles, this.profile.radius);
+        });
+        if (!landing) return; // Keep the solid contact when there is no safe landing space.
+        obstacleFall = { ...obstacle, ...landing };
+      }
       this.triggeredZones.add(`${this.floorId}:${zoneKey(hit.zone)}`);
       const resume = { manual: this.manual, destination: this.destination, point: this.pointTarget && { ...this.pointTarget } };
       if (!this.playFall(kind)) return;
       this.fall!.autoRecover = true;
+      this.fall!.obstacle = obstacleFall;
       this.resumeAfterFall = resume;
     }
   }

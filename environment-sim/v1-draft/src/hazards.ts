@@ -45,6 +45,11 @@ export interface HazardHit {
  */
 export const HAZARD_CATALOG: HazardDef[] = [
   {
+    id: "ottoman", object: "Ottoman in the walking path", category: "falls_mobility",
+    elderly: { severity: "medium", reason: "Authored demo: a foot catches the low furniture." },
+    toddler: { severity: "low", reason: "Low furniture in the walking path." },
+  },
+  {
     id: "loose_rug", object: "Loose rug, runner, or curled rug edge", category: "falls_mobility",
     elderly: { severity: "high", reason: "Trip hazard; falls in older adults carry high injury risk (hip fractures)." },
     toddler: { severity: "medium", reason: "Can trip during play or running, but fall height/impact risk is lower." },

@@ -2,7 +2,7 @@
 
 Implemented locally on 2026-09-05 in `environment-sim/v2/`. This milestone connects the existing photo-guided ground-floor great room to a newly generated primary bedroom through an authored U-shaped stair and landing. An authored upper hall is included; other upstairs bedrooms and bathrooms are not. The [layout/access review](layout-access-review.md) records the subsequent correction of the stair placement and navigation.
 
-Integrated the teammate's manual walkthrough and hazard/recovery changes from `origin/main` at `a78d2e9` on local branch `feature/tantau-upstairs`. Commits are prepared locally for review; pushing requires the user's approval. See the [movement handoff](../movement/README.md) for the current controls and reusable scripting API.
+Integrated the teammate's manual walkthrough and hazard/recovery changes from `origin/main` at `a946383` on local branch `feature/tantau-upstairs`. Commits are prepared locally for review; pushing requires the user's approval. See the [movement handoff](../movement/README.md) for the current controls and reusable scripting API.
 
 ## Run and share
 

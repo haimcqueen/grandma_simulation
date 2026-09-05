@@ -57,7 +57,7 @@ Programs are JSON data, not evaluated JavaScript. Validation accepts 1–256 ste
 
 Unit checks cover arbitrary targets, obstacle replanning, cross-floor programs, paused waits, retries/manual cancellation, staircase entry/reversal, wall sliding, malformed input and bounded zero-wait loops. Browser checks exercise canvas clicks, API-authored sequences, stopping, WASD takeover on stairs, reversal and mobile layout. The house walkthrough also checks clicking the authored hall floor and free lateral movement there.
 
-Run `npm run test:movement`, `npm run test:house`, and `npm test`. With Vite running, use `npm run test:movement:browser` and `npm run test:house:browser`. The latest remote manual walkthrough and hazard/recovery changes were merged locally from `a78d2e9`. The detector now follows the active floor, transfer motion suppresses automatic falls, and hazard recovery resumes arbitrary point targets as well as named destinations. The default walkthrough keeps hazards and markers disabled on both floors. These changes remain on the feature branch pending push approval.
+Run `npm run test:movement`, `npm run test:house`, and `npm test`. With Vite running, use `npm run test:movement:browser` and `npm run test:house:browser`. The latest remote manual walkthrough and hazard/recovery changes were merged locally from `a946383`. The detector now follows the active floor, transfer motion suppresses automatic falls, and hazard recovery resumes arbitrary point targets as well as named destinations. The connected-house walkthrough keeps demo hazards and markers disabled on both floors; the standalone walkthrough retains the teammate's ottoman replacement. These changes remain on the feature branch pending push approval.
 
 ## Review and acceptance
 

@@ -1,6 +1,6 @@
 {
   "date": "2026-09-05",
-  "remoteMain": "a78d2e9",
+  "remoteMain": "a946383",
   "branch": "feature/tantau-upstairs",
   "build": "passed",
   "stateTests": {
@@ -17,7 +17,8 @@
     "original walkthrough",
     "combined",
     "cutaway",
-    "hazard recovery"
+    "hazard recovery",
+    "ottoman replacement"
   ],
   "browserResult": "passed",
   "stairClearance": {
@@ -40,13 +41,30 @@
     "cellAfter": 0.075,
     "bodyRadiusUnchanged": 0.28,
     "heightEnvelopeUnchanged": 1.7,
-    "standaloneConnectedAreaBefore": 10.4625,
-    "standaloneConnectedAreaAfter": 11.773125,
     "areaUnits": "estimated square meters; cardinal cell connectivity diagnostic",
-    "newWorldGenerated": false
+    "newWorldGenerated": false,
+    "scope": "House-specific ground grid; standalone grid preserved from origin/main",
+    "baselineConnectedArea": 10.4625,
+    "fineGridTrialConnectedArea": 11.773125,
+    "shippedHouseConnectedArea": 11.03625
   },
   "notes": [
     "Initial recovery browser attempts were interrupted during development; the clean rerun passed.",
-    "Existing large Spark/Three bundle advisory remains."
-  ]
+    "Existing large Spark/Three bundle advisory remains.",
+    "The finer standalone grid changed ottoman landing availability; restored the teammate's standalone grid and kept finer navigation house-specific. Ottoman browser test then passed."
+  ],
+  "implementationCommit": "dc81a60",
+  "postMerge": {
+    "remoteMain": "a946383",
+    "stateTests": "42 passed",
+    "build": "passed",
+    "browserResult": "passed",
+    "browserSuites": [
+      "house studio",
+      "house walkthrough with free hall movement",
+      "movement API and canvas input",
+      "single-room walkthrough",
+      "ottoman replacement, solid contact and recovery"
+    ]
+  }
 }

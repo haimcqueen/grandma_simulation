@@ -7,11 +7,19 @@ export const roomFalls = [
   { id: "sideways", label: "Lose balance sideways", description: "Sway sideways and land on the hip and shoulder." },
 ] as const;
 export type RoomFallKind = typeof roomFalls[number]["id"];
-export type RoomFall = { kind: RoomFallKind; elapsed: number; autoRecover?: boolean };
+export type RoomFall = { kind: RoomFallKind; elapsed: number; autoRecover?: boolean; obstacle?: { travel: number; lateral?: number; solidId?: string } };
 export const RECOVERY_REST = 1.1;
 export const RECOVERY_DURATION = 3.8;
 export const roomFallFrame = (fall: RoomFall) => {
   const frame = groundFallFrame(fall.kind, fall.elapsed);
+  if (fall.obstacle && fall.kind === "trip") {
+    const movement = frame.forward / 0.65;
+    frame.forward = movement * fall.obstacle.travel;
+    const stepAside = Math.min(1, frame.progress / 0.4);
+    frame.lateral = stepAside * stepAside * (3 - 2 * stepAside) * (fall.obstacle.lateral ?? 0);
+    frame.elevation = 0;
+    if (frame.progress < 0.3) frame.stage = "Foot catches the ottoman";
+  }
   const recovery = fall.autoRecover
     ? Math.max(0, Math.min(1, (fall.elapsed - roomFallDuration(fall.kind) - RECOVERY_REST) / RECOVERY_DURATION)) : 0;
   return { ...frame, recovery, stage: recovery > 0

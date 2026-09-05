@@ -28,7 +28,8 @@
     "test:hazards": "node scripts/test-hazards-browser.mjs",
     "test:recovery": "node scripts/test-hazard-recovery.mjs",
     "test:walkthrough": "node scripts/test-walkthrough.mjs",
-    "test:house:walkthrough": "node scripts/test-house-walkthrough.mjs"
+    "test:house:walkthrough": "node scripts/test-house-walkthrough.mjs",
+    "test:ottoman": "node scripts/test-ottoman.mjs"
   },
   "dependencies": {
     "@sparkjsdev/spark": "2.1.0",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@playwright/test": "1.63.0",
     "@types/three": "0.185.4",
+    "meshoptimizer": "1.1.1",
     "three-mesh-bvh": "0.9.14",
     "tsx": "4.23.13",
     "typescript": "7.0.2",

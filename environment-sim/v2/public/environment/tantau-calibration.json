@@ -9,7 +9,7 @@
   "maximumX": 6.8,
   "minimumZ": -12.1,
   "maximumZ": 5.9,
-  "cell": 0.075,
+  "cell": 0.15,
   "radius": 0.28,
   "height": 1.7,
   "metricStatus": "unverified"

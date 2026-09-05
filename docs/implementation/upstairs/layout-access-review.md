@@ -26,9 +26,9 @@ The listing's complete upstairs bedrooms/baths and garage are not reconstructed.
 
 Appearance, collision and navigation are different layers. A visually open splat surface can be blocked by the generated collision mesh or excluded by navigation sampling. Enlarging the camera view or changing the splat scale alone does not repair that.
 
-The previous 15 cm grid inflated the 28 cm body radius by another 10.6 cm to guarantee clearance everywhere within each cell. The revised 7.5 cm grid needs only 5.3 cm extra. Body radius, height envelope, floor support checks and collision tests are retained.
+The previous 15 cm grid inflated the 28 cm body radius by another 10.6 cm to guarantee clearance everywhere within each cell. The house-specific 7.5 cm grid needs only 5.3 cm extra. Body radius, height envelope, floor support checks and collision tests are retained.
 
-Measured on the original ground room before the house-specific stair reservation:
+Diagnostic comparison on the same original collider, before the house-specific stair reservation:
 
 | Measure | Previous | Revised |
 | --- | ---: | ---: |
@@ -37,7 +37,7 @@ Measured on the original ground room before the house-specific stair reservation
 | Accepted area, including disconnected patches | 11.70 m² | 13.455 m² |
 | Area connected to spawn by adjacent cells | 10.4625 m² | 11.773125 m² |
 
-This recovers about **12.5% more connected area** without shrinking the resident. The connected-area statistic is a grid diagnostic, not architectural floor area or a promise that every arbitrary straight segment is traversable. The house-specific grid also excludes the stair volume.
+The finer-grid trial recovers about **12.5% more connected area** without shrinking the resident. After reserving the actual stair footprint, the shipped house ground grid has 2,261 accepted cells (12.718125 m²), with 11.03625 m² connected to spawn—about 5.5% above the original connected area, plus the separately traversable stairs. The connected-area statistic is a grid diagnostic, not architectural floor area or a promise that every arbitrary straight segment is traversable. The standalone room retains the teammate's original 0.15 m grid: applying our finer grid globally changed the safe landing candidates in their ottoman encounter. Keeping the improvement house-specific preserves that ongoing work.
 
 Remaining exclusions are real limitations of the current collision/support representation. For example, a visually floor-like sample near `(-1,-3)` has collider height about 0.173 m; the current accepted nominal-floor deviation is 0.16 m. Other nearby samples are sloped furniture surfaces or separate floor patches. A trial allowing 0.30 m deviation recovered only about 0.10 m² extra and was **not adopted**. Broadly relaxing collision or accepting elevated surfaces would not establish valid access.
 
@@ -73,3 +73,11 @@ Open **http://127.0.0.1:5174/?house=1**. Inspect Top down and Side, walk upstair
 [Reviewed ground view](evidence/layout-ground-reviewed.png) · [Reviewed side view](evidence/layout-side-reviewed.png) · [Authored stair entrance](evidence/layout-entry-reviewed.png). These show the current approximation, including the visual difference between authored architecture and the generated rooms.
 
 See [validation.json](../movement/validation.json) for checks actually run. Stair clearance samples the generated colliders and authored enclosure with a body capsule; it permits normal tread-height contact but does not validate foot placement, balance or building-code compliance.
+
+## Latest teammate integration
+
+Remote `main` advanced to `a946383` during final review. It adds the textured ottoman replacement and a local floor repair to the **default single-room walkthrough**. The local merge retains that implementation and its standalone grid, the new solid-contact recovery behavior, and the house stair/hall work. The connected-house walkthrough still uses its original scanned furniture and has no added hazard demo; the studio retains its own configured scenarios. This revision does not silently apply the ottoman's coordinates to every scene.
+
+The shared world loader now supports both rotated stair openings and replacement-region depth clipping. Furniture removal edits are explicitly registered on their own splat mesh so they cannot erase another floor. Point-target resumption and per-floor hazard identity are preserved alongside the teammate's solid-contact handling. See [the teammate's ottoman handoff](../../OTTOMAN-REPLACEMENT.md).
+
+Collaboration layout: one application in `environment-sim/v2`, local branch `feature/tantau-upstairs`, dedicated house manifests under `public/environment/house` and focused stair/movement modules. Shared viewer/loader/app hooks still require integration review; a separate v2 copy would not remove that work. No remote push is authorized by this handoff.

@@ -1,6 +1,6 @@
 # Ottoman replacement and solid contact
 
-The default manual walkthrough replaces the ottoman already visible on the living-room rug with the user's textured GLB. The four camera controls remain the only main UI; the previous cable, toy and demo-rug hazards remain disabled.
+The default manual walkthrough replaces the ottoman already visible on the living-room rug with the user's textured GLB. The previous cable, toy and demo-rug hazards remain disabled. A compact danger card appears during falls and recovery.
 
 ## Geometry and floor repair
 
@@ -10,13 +10,15 @@ The default manual walkthrough replaces the ottoman already visible on the livin
 
 `replacement-navigation.ts` rebuilds only nearby navigation cells using floor/support rays and capsule-to-triangle clearance checks against the updated room collider. It copies the original grid, preserving unrelated cells and source descriptors. The replacement's solid footprint is then added to `Environment.objects` so walking cannot pass through it.
 
-The visual repair is a small, feathered carpet patch with a contact shadow beneath the model. It renders in a separate floor pass before room depth and articulated objects. This ordering avoids the dark floor holes and triangle fringes caused by stale scan depth, while allowing grandma and the ottoman to occlude the repair normally. This local patch is an approximation to the rug, not recovered scan detail.
+The artificial carpet repair mesh has been removed. The splat eraser starts 7 cm above the object base, preserving the original photographed floor. Collider/depth removal still covers the full original bounds to remove scan fragments, and the invisible floor support remains for navigation. `Viewer.floorRepairs` stays available to other hosts but is empty in this room.
 
 ## Contact, fall and recovery
 
 The imported ottoman is the only automatic hazard in the default walkthrough. Its detection envelope is narrowed to contact with its solid footprint plus the resident's clearance. It is solid even if automatic falls are disabled.
 
-A contact fall finds a clear landing beside the ottoman, rather than routing a fall through its volume. Grandma recoils sideways before pitching forward onto the clear floor, rests briefly, and stands up. Keyboard input is locked during the animation and restored after recovery. Staying beside the same object does not retrigger it; leaving and returning rearms the encounter. If there is no clear landing path, solid contact blocks movement instead of forcing a fall through furniture.
+A front contact tips grandma forward across the ottoman cushion, with no sideways displacement. The authored root moves up to 55 cm forward and returns to the initial contact point during recovery. Only the contacted solid is exempted from horizontal root blocking during this animation; the scanned navigation grid and other objects remain enforced. `obstacle-support.ts` grounds the posed body on the ottoman top using the world bounds of each articulated mesh, preventing links from sinking into the cushion during the fall or recovery. Top height comes from `RoomHazardZone.obstacle.baseY` (or the environment floor) plus the solid height.
+
+Grandma rests supported on the ottoman, then withdraws and stands on the original floor. This is a forward trip across the cushion, not a somersault to a landing behind it. Keyboard input is locked during the animation and restored after recovery. Remaining at the same object does not retrigger the fall; leaving and returning rearms it.
 
 The animation remains authored, with navigation/footprint collision and tested articulated-body clearance; it is not a rigid-body physics engine. Camera choice is preserved throughout.
 
@@ -27,7 +29,8 @@ The animation remains authored, with navigation/footprint collision and tested a
 - `Viewer.floorRepairs`: ordered floor repair rendering; disposed together with owned materials/textures.
 - `createWalkthroughSimulation(environment, hazards)`: defaults to a clean manual session; this host explicitly supplies the single ottoman encounter.
 - `RoomHazardZone.obstacle.solidId`: links contact behavior to the actual solid `EnvironmentObject`.
-- `RoomFall.obstacle`: selected clear-floor movement for the contact animation.
+- `RoomFall.obstacle.support` / `createObstacleSupport`: reusable furniture support geometry and posed-link clearance.
+- `RoomFall.obstacle.travel`: forward tipping distance, withdrawn during recovery.
 
 The studio at `/simulation.html` still has its separate demo zones and controls. Other worlds do not inherit Tantau's replacement coordinates.
 
@@ -35,6 +38,6 @@ The studio at `/simulation.html` still has its separate demo zones and controls.
 
 The browser GLB retains the user's textures and reduces the original 1.9 million triangles to about 40,000. See `environment-sim/v2/public/props/README.md` for reproducible preparation and sizes.
 
-From `environment-sim/v2`, run `npm run build`, `npm test`, `npm run test:ottoman`, `npm run test:walkthrough`, and `npm run test:combined` (browser checks require the dev server). The ottoman browser check covers replacement ownership, the floor pass, pixel samples where gaps previously appeared, solid walking collision with falls disabled, arrow-key encounters in first and third person, fall/get-up, restored controls, and frame-by-frame body-link clearance against the ottoman's interior. Screenshots are in ignored `.artifacts/ottoman-*.png`.
+From `environment-sim/v2`, run `npm run build`, `npm test`, `npm run test:ottoman`, `npm run test:walkthrough`, and `npm run test:combined` (browser checks require the dev server). The ottoman browser check covers replacement ownership, the absence of the artificial floor patch, forward-only travel and return to contact, solid walking collision with falls disabled, arrow-key encounters in first and third person, fall/get-up, restored controls, and frame-by-frame body-link clearance against the ottoman's interior. Screenshots are in ignored `.artifacts/ottoman-*.png`.
 
-Validation passed: production build, all 27 shared tests, ottoman browser check, walkthrough browser check, and combined studio browser check. The repaired-floor screenshot was visually reviewed after removing the gaps.
+Validated this update in an isolated snapshot: production build, all 27 shared simulation tests and the ottoman browser check passed. The floor and forward-fall screenshots were visually inspected; per-frame articulated-link clearance passed in first and third person.

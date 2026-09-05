@@ -30,8 +30,11 @@ export class Simulation {
   scenario: Scenario = "clear";
   status: "idle" | "walking" | "arrived" | "blocked" | "falling" | "fallen" = "idle";
   patioFallEnabled = false;
+  /** Separate opt-in: falls triggered by hand-authored hazard zones (hazards.ts), not the fixed patio patch. */
+  hazardFallEnabled = false;
   fallProgress = 0;
   fallStartedAt = 0;
+  private fallCauseId = "patio-fall-zone";
   get isFalling() { return this.status === "falling" || this.status === "fallen"; }
   paused = false;
   subject = SUBJECTS[0];
@@ -61,11 +64,14 @@ export class Simulation {
     return [...objects, ...scenarioObjects(this.scenario)];
   }
   constructor() {
-    this.hazardTracker.onEnter = (_entityId, hit) => this.record(
-      "hazardEncountered",
-      `${hit.zone.room}: ${hit.hazard.object} — ${hit.reason}`,
-      ["resident-01", hit.zone.hazardId],
-    );
+    this.hazardTracker.onEnter = (_entityId, hit) => {
+      this.record(
+        "hazardEncountered",
+        `${hit.zone.room}: ${hit.hazard.object} — ${hit.reason}`,
+        ["resident-01", hit.zone.hazardId],
+      );
+      this.tryHazardFall(hit);
+    };
     this.record("ready", "Resident ready in the living room.", ["resident-01"]);
   }
   setSubject(subject: Subject) {
@@ -93,9 +99,13 @@ export class Simulation {
   setPatioFall(enabled: boolean) {
     this.patioFallEnabled = enabled;
   }
+  setHazardFall(enabled: boolean) {
+    this.hazardFallEnabled = enabled;
+  }
   private checkPatioFall(travel: number) {
     if (!this.patioFallEnabled || this.subject.locomotion !== "biped" || travel <= 0 ||
       !contains(this.position, patioFallZone)) return false;
+    this.fallCauseId = "patio-fall-zone";
     this.status = "falling";
     this.fallProgress = 0;
     this.fallStartedAt = this.time;
@@ -104,6 +114,28 @@ export class Simulation {
     this.record("fallStarted", "Patio fall demo: robot stumbles. This is an authored animation.",
       ["resident-01", "patio-fall-zone"]);
     return true;
+  }
+  /**
+   * Separate opt-in demo: stumbles on entering a *high or critical severity*
+   * hand-authored "falls_mobility" hazard zone (hazards.ts) for the current
+   * subject's condition — e.g. a loose rug for an older adult. Like the
+   * patio demo, this is an authored animation and not a fall prediction.
+   */
+  private tryHazardFall(hit: HazardHit) {
+    if (!this.hazardFallEnabled || this.isFalling || this.subject.locomotion !== "biped") return;
+    if (hit.hazard.category !== "falls_mobility") return;
+    if (hit.severity !== "high" && hit.severity !== "critical") return;
+    this.fallCauseId = hit.zone.hazardId;
+    this.status = "falling";
+    this.fallProgress = 0;
+    this.fallStartedAt = this.time;
+    this.currentSpeed = 0;
+    this.route = [];
+    this.record(
+      "fallStarted",
+      `Hazard fall demo: stumble on ${hit.hazard.object.toLowerCase()} in the ${hit.zone.room.toLowerCase()}. This is an authored animation, not a fall prediction.`,
+      ["resident-01", hit.zone.hazardId],
+    );
   }
   private animateMotion(travel: number, turn: number, delta: number) {
     this.gaitPhase += (travel + Math.abs(turn) * 0.12) / this.subject.motion.strideLength;
@@ -175,6 +207,7 @@ export class Simulation {
       this.animateMotion(actual * Math.sign(travel), rotation, step);
       this.status = actual > 0.000001 || Math.abs(rotation) > 0.000001 ? "walking" : "idle";
       this.updateHazard();
+      if (this.isFalling) return;
       if (this.checkPatioFall(actual)) return;
     }
   }
@@ -237,7 +270,7 @@ export class Simulation {
         if (this.fallProgress >= 1) {
           this.status = "fallen";
           this.record("fallCompleted", "Robot is down. Reset resident to stand up and try again.",
-            ["resident-01", "patio-fall-zone"]);
+            ["resident-01", this.fallCauseId]);
         }
       } else if (!this.manual && !this.isFalling) this.walkStep(step);
     }
@@ -269,6 +302,7 @@ export class Simulation {
       this.distance += travel;
       this.animateMotion(travel, rotation, delta);
       this.updateHazard();
+      if (this.isFalling) return;
       if (this.checkPatioFall(travel)) return;
       if (travel === length) {
         this.route.shift();
@@ -293,6 +327,7 @@ export class Simulation {
     this.status = "idle";
     this.fallProgress = 0;
     this.fallStartedAt = 0;
+    this.fallCauseId = "patio-fall-zone";
     this.paused = false;
     this.manual = false;
     this.time = 0;

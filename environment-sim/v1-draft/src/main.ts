@@ -29,6 +29,7 @@ app.innerHTML = `
       <section class="control-section resident-section"><h3><span>03</span> Observe the journey</h3><div class="resident-status"><div class="avatar">R</div><div><strong>Resident 01</strong><small id="status" role="status">Ready to explore</small></div><span id="status-dot" class="status-dot"></span></div><label class="speed-label" for="speed">Walking speed <output id="speed-value">0.9 m/s</output></label><input id="speed" type="range" min="0.4" max="1.6" step="0.1" value="0.9"><div class="metrics"><div><strong id="elapsed">00:00</strong><small>SIMULATION TIME</small></div><div><strong id="distance">0.0 <em>m</em></strong><small>DISTANCE WALKED</small></div></div><div class="playback"><button id="pause">Ⅱ Pause</button><button id="reset">↺ Reset resident</button></div></section>
       <section class="control-section"><label class="speed-label" for="subject">Character</label><select id="subject">${SUBJECTS.map(subject => `<option value="${subject.id}">${subject.label}</option>`).join("")}</select><p id="motion-note" class="hint"></p><label class="figurine-label"><input id="figurine" type="checkbox" checked> Show grandma beside the start when controlling a robot</label><p id="figurine-status" class="hint" role="status">Loading grandma figurine…</p></section>
       <section class="control-section"><label class="figurine-label"><input id="patio-fall" type="checkbox"> Patio fall demo</label><p class="hint">Choose a walking robot, enable this demo, then select Patio. The amber patch triggers a staged stumble and fall. Reset resident to stand up. This animation does not predict real falls.</p></section>
+      <section class="control-section"><label class="figurine-label"><input id="hazard-fall" type="checkbox"> Hazard fall demo</label><p class="hint">Choose a walking robot, enable this demo, then walk into a high-severity fall hazard (loose rug, stairs, wet floor...) shown in a hazard popup. The resident stumbles and falls on the spot. Reset resident to stand up. This animation does not predict real falls.</p></section>
       <section class="event-section"><div class="event-title"><h3>Observations</h3><span>LIVE</span></div><ol id="events" aria-live="polite" aria-relevant="additions"></ol></section>
       <details><summary>About this experiment</summary><p>Floor-plan-inspired geometry with illustrative furniture. The resident is fictional; speed and clearance are explicit scenario settings, not inferred from age. Obstacles are manually placed. Events describe route availability, not fall risk.</p><p>Reset preserves the selected scenario and speed. Amber outlines show the 0.28 m clearance used by navigation.</p><label><input id="debug" type="checkbox"> Show navigation clearance</label><label><input id="labels" type="checkbox" checked> Show room labels</label><label><input id="hazard-props" type="checkbox" checked> Show hazard objects</label><a href="https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_42_1.jpg" target="_blank" rel="noreferrer">Source floor plan ↗</a></details>
     </aside>
@@ -54,6 +55,8 @@ speedInput.min = "0.1";
 speedInput.step = "0.01";
 element<HTMLInputElement>("patio-fall").onchange = event =>
   simulation.setPatioFall((event.target as HTMLInputElement).checked);
+element<HTMLInputElement>("hazard-fall").onchange = event =>
+  simulation.setHazardFall((event.target as HTMLInputElement).checked);
 element<HTMLInputElement>("figurine").onchange = event =>
   view.setFigurineVisible((event.target as HTMLInputElement).checked);
 void view.figurineReady.then(() => {
@@ -168,7 +171,7 @@ function renderInterface() {
         walking: simulation.manual ? "Manual movement" : `Walking to ${target}`,
         arrived: `Arrived · ${target}`,
         blocked: "Route blocked",
-        falling: "Stumbling · Patio fall demo",
+        falling: "Stumbling · Fall demo",
         fallen: "Robot down · Reset to stand up",
       }[simulation.status];
   element("status-dot").className = `status-dot ${simulation.status}`;

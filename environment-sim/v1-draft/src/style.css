@@ -98,15 +98,30 @@ main {
   inset: 0;
 }
 #scene canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   touch-action: none;
 }
-.scene-heading {
+.camera-input {
   position: absolute;
-  top: 35px;
-  left: 35px;
+  inset: 0;
+  z-index: 1;
+  touch-action: none;
+}
+.camera-title {
+  position: absolute;
+  left: 12px;
+  top: 76px;
+  z-index: 2;
+  padding: 8px 10px;
+  background: #f8f8f0e8;
+  border: 1px solid #d6dacf;
+  border-radius: 5px;
+  color: #304c3c;
+  font-size: 11px;
   pointer-events: none;
 }
 .eyebrow {
@@ -123,14 +138,11 @@ h1 {
   font-weight: 500;
   margin: 13px 0;
 }
-.scene-heading p {
-  font-size: 11px;
-  color: #737b70;
-}
 .view-controls {
   position: absolute;
-  right: 24px;
-  top: 27px;
+  left: 12px;
+  top: 22px;
+  z-index: 2;
   background: #f8f8f0d9;
   border: 1px solid #d6dacf;
   border-radius: 7px;
@@ -152,6 +164,8 @@ h1 {
   box-shadow: 0 2px 6px #334a3210;
 }
 .scene-caption {
+  z-index: 2;
+  pointer-events: none;
   position: absolute;
   left: 28px;
   bottom: 24px;
@@ -193,15 +207,6 @@ aside {
   padding: 29px 26px 20px;
   border-left: 1px solid #dce0d7;
   background: #fbfcf7;
-}
-.panel-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.step-count {
-  font-size: 9px;
-  color: #99a192;
 }
 h2 {
   font-family: Manrope, sans-serif;
@@ -304,7 +309,7 @@ h3 > span {
 .segmented button[data-scenario="blocked"].active {
   color: #a3613f;
 }
-#subject {
+#subject, #fall-animation, #animation-speed {
   width: 100%;
   padding: 10px;
   border: 1px solid #d4d4ca;
@@ -312,12 +317,6 @@ h3 > span {
   background: transparent;
   color: inherit;
   font: inherit;
-}
-.figurine-label {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 13px;
 }
 .hint {
   font-size: 10px;
@@ -518,13 +517,6 @@ footer {
   aside {
     padding: 25px 20px;
   }
-  .scene-heading {
-    left: 24px;
-    top: 75px;
-  }
-  .scene-heading h1 {
-    font-size: 25px;
-  }
   .model-note {
     display: none;
   }
@@ -538,6 +530,13 @@ footer {
   }
 }
 @media (max-width: 700px) {
+  .camera-title {
+    padding: 6px 8px;
+  }
+  .scene-caption {
+    bottom: 18px;
+    left: 12px;
+  }
   header {
     height: 60px;
     padding: 0 18px;
@@ -551,12 +550,6 @@ footer {
   .viewport {
     min-height: 600px;
     height: 70vh;
-  }
-  .scene-heading {
-    top: 76px;
-  }
-  .scene-heading h1 {
-    font-size: 27px;
   }
   aside {
     padding: 25px;
@@ -605,16 +598,17 @@ footer {
   .viewport {
     min-height: 700px;
   }
-  .scene-heading {
-    top: 68px;
-  }
-  .scene-heading h1 {
-    font-size: 24px;
-  }
-  .scene-heading p {
-    font-size: 10px;
-  }
   .scene-caption {
     bottom: 18px;
   }
+}
+
+#floor-level {
+  width: 100%; padding: 12px; border: 1px solid #cdd5c8; border-radius: 7px;
+  background: #fff; color: #29463a; font: inherit;
+}
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+#export-house {
+  padding: 10px 12px; margin-top: 12px; border: 1px solid #cdd5c8;
+  border-radius: 6px; background: #fff; color: #29463a;
 }

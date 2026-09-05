@@ -1,5 +1,7 @@
+import { FLOOR_RISE, STAIR_ENTRY, STAIR_ROUTE, type StairPoint } from "./stairs";
+import { upperDestinations, upperFloors, upperObjects, upperSpawn } from "./upperFloor";
 import {
-  destinations,
+  destinations, floors, type FloorLevel,
   objects,
   scenarioObjects,
   spawn,
@@ -13,7 +15,7 @@ import {
 import { planRoute, segmentClear } from "./navigation";
 import { angleDifference, approach } from "./robot/motion";
 import { SUBJECTS, type Subject } from "./robot/subjects";
-import { FALL_DURATION } from "./robot/fall";
+import { FALL_DURATION, BALCONY_APPROACH, BALCONY_DURATION, balconyFrame, type FallKind } from "./robot/fall";
 export type SimulationEvent = {
   time: number;
   type: string;
@@ -21,6 +23,69 @@ export type SimulationEvent = {
   ids: string[];
 };
 export class Simulation {
+  level: FloorLevel = "ground";
+  stairTarget: FloorLevel | null = null;
+  stairRoute: StairPoint[] = [];
+  get onStairs() { return this.stairRoute.length > 0; }
+  get changingFloor() { return this.stairTarget !== null; }
+  requestFloor(level: FloorLevel) {
+    if (this.isFalling || this.changingFloor || level === this.level) return false;
+    const route = planRoute(this.position, STAIR_ENTRY[this.level], this.obstacles, this.floorRegions);
+    if (!route) {
+      this.record("routeBlocked", "The route to the stairs is blocked. Clear the passage and try again.", ["stairs"]);
+      return false;
+    }
+    this.manual = false;
+    this.destination = null;
+    this.stairTarget = level;
+    this.route = route;
+    this.currentSpeed = 0;
+    this.status = "walking";
+    this.record("stairApproach", level === "upper" ? "Walking to the stairs to go upstairs." : "Walking to the landing to go downstairs.", ["stairs"]);
+    return true;
+  }
+  private climbStep(delta: number) {
+    const next = this.stairRoute[0];
+    if (!next) return;
+    const dx = next.x - this.position.x, dz = next.z - this.position.z, dy = next.y - this.elevation;
+    const length = Math.hypot(dx, dy, dz);
+    if (length > 0.000001) {
+      const error = angleDifference(Math.atan2(dx, dz), this.heading);
+      const rotation = Math.max(-this.turnRate * delta, Math.min(this.turnRate * delta, error));
+      this.heading += rotation;
+      const aligned = Math.abs(error - rotation) < 0.12;
+      this.changeSpeed(aligned ? Math.min(this.speed * 0.55, Math.sqrt(2 * this.subject.motion.deceleration * length)) : 0, delta);
+      const travel = aligned ? Math.min(length, this.currentSpeed * delta) : 0;
+      this.position = { x: this.position.x + dx / length * travel, z: this.position.z + dz / length * travel };
+      this.elevation += dy / length * travel;
+      this.distance += travel;
+      this.animateMotion(travel, rotation, delta);
+      if (travel < length) return;
+    }
+    this.stairRoute.shift();
+    this.currentSpeed = 0;
+    if (!this.stairRoute.length) {
+      this.level = this.stairTarget!;
+      this.stairTarget = null;
+      this.elevation = this.level === "upper" ? FLOOR_RISE : 0;
+      this.status = "idle";
+      this.patioFallEnabled = false;
+      this.revision++;
+      this.record("floorReached", this.level === "upper" ? "Reached the second-floor landing." : "Reached the ground floor.", [this.level, "stairs"]);
+    }
+  }
+  get floorRegions() { return this.level === "upper" ? upperFloors : floors; }
+  get availableDestinations() { return this.level === "upper" ? upperDestinations : destinations; }
+  setLevel(level: FloorLevel) {
+    if (level === this.level) return;
+    this.level = level;
+    this.scenario = "clear";
+    this.patioFallEnabled = false;
+    this.reset();
+    this.record("floorChanged", level === "upper"
+      ? "Second floor selected. Resident placed at the stair landing."
+      : "Ground floor selected. Resident placed in the living room.", [level]);
+  }
   position: Point = { ...spawn };
   heading = 0;
   route: Point[] = [];
@@ -30,6 +95,14 @@ export class Simulation {
   patioFallEnabled = false;
   fallProgress = 0;
   fallStartedAt = 0;
+  fallKind: FallKind = "patio";
+  fallElapsed = 0;
+  injuryProgress = 0;
+  elevation = 0;
+  get fallStage() {
+    return this.fallKind === "balcony" ? balconyFrame(this.fallElapsed).stage
+      : this.status === "fallen" ? "Injured on the ground" : "Stumbling on the patio";
+  }
   get isFalling() { return this.status === "falling" || this.status === "fallen"; }
   paused = false;
   subject = SUBJECTS[0];
@@ -45,7 +118,7 @@ export class Simulation {
   manual = false;
   get turnRate() { return this.subject.motion.turnRate; }
   get obstacles() {
-    return [...objects, ...scenarioObjects(this.scenario)];
+    return this.level === "upper" ? upperObjects : [...objects, ...scenarioObjects(this.scenario)];
   }
   constructor() {
     this.record("ready", "Resident ready in the living room.", ["resident-01"]);
@@ -59,13 +132,36 @@ export class Simulation {
     this.gaitBlend = 0;
   }
   setPatioFall(enabled: boolean) {
-    this.patioFallEnabled = enabled;
+    this.patioFallEnabled = this.level === "ground" && enabled;
+  }
+  playFall(kind: FallKind) {
+    if (this.changingFloor || this.level === "upper" || this.subject.locomotion === "quadruped") return false;
+    this.reset();
+    this.fallKind = kind;
+    this.status = "falling";
+    this.fallStartedAt = this.time;
+    this.gaitBlend = 1;
+    if (kind === "balcony") {
+      const frame = balconyFrame(0);
+      this.position = { x: frame.x, z: frame.z };
+      this.elevation = frame.elevation;
+    } else {
+      this.position = { x: patioFallZone.x, z: patioFallZone.z };
+      this.heading = Math.PI;
+    }
+    this.record("fallStarted", kind === "balcony"
+      ? "Balcony animation: approaching an unguarded edge."
+      : "Patio animation: losing footing.", ["resident-01", `${kind}-fall-zone`]);
+    return true;
   }
   private checkPatioFall(travel: number) {
-    if (!this.patioFallEnabled || this.subject.locomotion !== "biped" || travel <= 0 ||
+    if (this.changingFloor || !this.patioFallEnabled || this.subject.locomotion !== "biped" || travel <= 0 ||
       !contains(this.position, patioFallZone)) return false;
     this.status = "falling";
     this.fallProgress = 0;
+    this.fallKind = "patio";
+    this.fallElapsed = 0;
+    this.injuryProgress = 0;
     this.fallStartedAt = this.time;
     this.currentSpeed = 0;
     this.route = [];
@@ -89,14 +185,14 @@ export class Simulation {
     this.events = this.events.slice(0, 30);
   }
   requestDestination(id: DestinationId) {
-    if (this.isFalling) return;
+    if (this.changingFloor || this.isFalling || !this.availableDestinations.some(d => d.id === id)) return;
     if (this.manual) this.setManual(false);
     this.destination = id;
     this.replan(false);
   }
 
   setManual(on: boolean) {
-    if (this.isFalling) return;
+    if (this.changingFloor || this.isFalling) return;
     if (this.manual === on) return;
     this.manual = on;
     this.currentSpeed = 0;
@@ -136,7 +232,7 @@ export class Simulation {
         z: this.position.z + Math.cos(this.heading) * travel,
       };
       const previous = this.position;
-      if (segmentClear(previous, next, obstacles)) this.position = next;
+      if (segmentClear(previous, next, obstacles, this.floorRegions)) this.position = next;
       else this.currentSpeed = 0;
       const actual = Math.hypot(this.position.x - previous.x, this.position.z - previous.z);
       this.distance += actual;
@@ -146,9 +242,9 @@ export class Simulation {
     }
   }
   private replan(changed: boolean) {
-    const target = destinations.find((item) => item.id === this.destination);
+    const target = this.availableDestinations.find((item) => item.id === this.destination);
     if (!target) return;
-    const route = planRoute(this.position, target, this.obstacles);
+    const route = planRoute(this.position, target, this.obstacles, this.floorRegions);
     this.route = route ?? [];
     this.currentSpeed = 0;
     this.status = route ? "walking" : "blocked";
@@ -167,6 +263,8 @@ export class Simulation {
     );
   }
   setScenario(scenario: Scenario) {
+    if (this.changingFloor) return false;
+    if (this.level === "upper") return scenario === "clear";
     if (scenario === this.scenario) return true;
     if (
       !isWalkable(this.position, [...objects, ...scenarioObjects(scenario)])
@@ -199,12 +297,29 @@ export class Simulation {
       const step = Math.min(remaining, 1 / 60);
       remaining -= step;
       this.time += step;
-      if (this.status === "falling") {
-        this.fallProgress = Math.min(1, this.fallProgress + step / FALL_DURATION);
-        if (this.fallProgress >= 1) {
+      if (this.onStairs) this.climbStep(step);
+      else if (this.isFalling) {
+        const duration = this.fallKind === "balcony" ? BALCONY_DURATION : FALL_DURATION;
+        this.fallElapsed = Math.min(duration + 1.2, this.fallElapsed + step);
+        if (this.fallKind === "balcony") {
+          const frame = balconyFrame(this.fallElapsed);
+          const travel = Math.hypot(frame.x - this.position.x, frame.z - this.position.z);
+          this.position = { x: frame.x, z: frame.z };
+          this.elevation = frame.elevation;
+          this.fallProgress = frame.poseProgress;
+          this.injuryProgress = frame.injuryProgress;
+          if (this.fallElapsed <= BALCONY_APPROACH) {
+            this.distance += travel;
+            this.animateMotion(travel, 0, step);
+          }
+        } else {
+          this.fallProgress = Math.min(1, this.fallElapsed / FALL_DURATION);
+          this.injuryProgress = Math.min(1, Math.max(0, (this.fallElapsed - FALL_DURATION) / 1.2));
+        }
+        if (this.fallElapsed >= duration && this.status === "falling") {
           this.status = "fallen";
-          this.record("fallCompleted", "Robot is down. Reset resident to stand up and try again.",
-            ["resident-01", "patio-fall-zone"]);
+          this.record("fallCompleted", "Resident is down. Replay the animation or reset to stand up.",
+            ["resident-01", `${this.fallKind}-fall-zone`]);
         }
       } else if (!this.manual && !this.isFalling) this.walkStep(step);
     }
@@ -241,24 +356,35 @@ export class Simulation {
         this.currentSpeed = 0;
       }
     }
+    if (!this.route.length && this.stairTarget) {
+      this.stairRoute = (this.level === "ground" ? STAIR_ROUTE : [...STAIR_ROUTE].reverse()).map(p => ({ ...p }));
+      this.record("stairClimbStarted", this.level === "ground" ? "Climbing the stairs." : "Descending the stairs.", ["stairs"]);
+      return;
+    }
     if (!this.route.length) {
       this.currentSpeed = 0;
       this.status = "arrived";
       this.record(
         "destinationReached",
-        `Arrived at ${destinations.find((item) => item.id === this.destination)?.label.toLowerCase()}.`,
+        `Arrived at ${this.availableDestinations.find((item) => item.id === this.destination)?.label.toLowerCase()}.`,
         ["resident-01", this.destination!],
       );
     }
   }
   reset() {
-    this.position = { ...spawn };
+    this.stairTarget = null;
+    this.stairRoute = [];
+    this.position = { ...(this.level === "upper" ? upperSpawn : spawn) };
     this.heading = 0;
     this.route = [];
     this.destination = null;
     this.status = "idle";
     this.fallProgress = 0;
     this.fallStartedAt = 0;
+    this.fallKind = "patio";
+    this.fallElapsed = 0;
+    this.injuryProgress = 0;
+    this.elevation = this.level === "upper" ? FLOOR_RISE : 0;
     this.paused = false;
     this.manual = false;
     this.time = 0;

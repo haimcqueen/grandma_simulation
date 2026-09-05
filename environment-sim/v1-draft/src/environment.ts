@@ -1,3 +1,4 @@
+import type { upperDestinations } from "./upperFloor";
 /** Metres, seconds, Y-up. Plan front is +Z; no surveyed orientation is implied. */
 export type Point = { x: number; z: number };
 export type Rectangle = Point & { width: number; depth: number };
@@ -31,11 +32,28 @@ export const destinations = [
     label: "Patio",
     x: 7.8,
     z: 5.6,
-    description: "Step out into the garden",
+    description: "Step onto the covered patio",
+  },
+  {
+    id: "garden",
+    label: "Garden",
+    x: 7.8,
+    z: 2,
+    description: "Walk through the patio onto the lawn",
   },
 ] as const;
-export type DestinationId = (typeof destinations)[number]["id"];
+export type DestinationId = (typeof destinations)[number]["id"] | (typeof upperDestinations)[number]["id"];
+export type FloorLevel = "ground" | "upper";
 export const floors = [
+  {
+    id: "garden",
+    label: "GARDEN",
+    x: 7.7,
+    z: 2,
+    width: 6.6,
+    depth: 4,
+    color: 0x78965b,
+  },
   {
     id: "adu",
     label: "ATTACHED ADU",
@@ -204,6 +222,7 @@ export function isWalkable(
   point: Point,
   obstacles: HouseObject[],
   clearance = radius,
+  floorRegions: Rectangle[] = floors,
 ) {
   // Nine footprint samples prevent a body clipping the edge of the union of floors.
   for (const [dx, dz] of [
@@ -218,7 +237,7 @@ export function isWalkable(
     [-0.707, -0.707],
   ]) {
     if (
-      !floors.some((floor) =>
+      !floorRegions.some((floor) =>
         contains(
           { x: point.x + dx * clearance, z: point.z + dz * clearance },
           floor,

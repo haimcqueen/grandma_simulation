@@ -42,6 +42,36 @@ test("cart produces a longer, collision-free kitchen detour", () => {
   complete(cart);
   assert.ok(cart.distance > clear.distance + 1);
 });
+test("garden route crosses the patio and returns indoors", () => {
+  const simulation = new Simulation();
+  simulation.requestDestination("garden");
+  let crossedPatio = false;
+  for (let frame = 0; frame < 120 * 60 && simulation.status === "walking"; frame++) {
+    simulation.advance(1 / 60);
+    assert.ok(isWalkable(simulation.position, simulation.obstacles));
+    if (simulation.position.z > 4 && simulation.position.z < 7) crossedPatio = true;
+  }
+  assert.equal(simulation.status, "arrived");
+  assert.ok(crossedPatio);
+  assert.ok(simulation.position.z < 4);
+  simulation.requestDestination("kitchen");
+  complete(simulation);
+  simulation.requestDestination("garden");
+  complete(simulation);
+  simulation.requestDestination("living");
+  complete(simulation);
+  assert.deepEqual(simulation.position, spawn);
+});
+test("manual driving crosses the patio edge but stops at the garden boundary", () => {
+  const simulation = new Simulation();
+  simulation.position = { x: 7.8, z: 4.5 };
+  simulation.heading = Math.PI;
+  simulation.setManual(true);
+  simulation.drive(1, 0, 30);
+  assert.ok(simulation.position.z < 1);
+  assert.ok(isWalkable(simulation.position, simulation.obstacles));
+  assert.equal(isWalkable({ x: 7.8, z: -0.1 }, simulation.obstacles), false);
+});
 test("barrier blocks kitchen and removing it resumes the same task", () => {
   const simulation = new Simulation();
   simulation.setScenario("blocked");

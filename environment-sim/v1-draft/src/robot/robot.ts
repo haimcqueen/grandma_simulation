@@ -69,6 +69,17 @@ export class Robot {
   get skin() { return this.livery.id }
 
   private _box = new THREE.Box3()
+  private eyeBounds = new THREE.Box3()
+
+  getEyePosition(target: THREE.Vector3) {
+    this.root.updateMatrixWorld(true)
+    const head = this.nodes.get('head_link_visual')
+    if (head) {
+      this.eyeBounds.setFromObject(head).getCenter(target)
+      return target
+    }
+    return this.root.localToWorld(target.set(0, this.height * 0.88 - this.floorOffset, 0.18))
+  }
 
   /**
    * Place the model so its lowest point rests on y = 0, measured AFTER posing.

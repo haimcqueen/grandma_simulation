@@ -1,30 +1,31 @@
+import { visualConfig } from "./visualConfig";
 import "./style.css";
-import { destinations, type DestinationId, type Scenario } from "./environment";
+import { destinations, type DestinationId, type Scenario, type FloorLevel } from "./environment";
 import { Simulation } from "./simulation";
 import { createHouseScene } from "./scene";
 import { SUBJECTS } from "./robot/subjects";
+import type { FallKind } from "./robot/fall";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   <header><a class="brand" href="./"><span class="brand-icon">⌂</span> HOUSE LAB <span class="divider"></span><span class="project-name">Tantau residence</span></a><span class="prototype"><i></i> INTERACTIVE PROTOTYPE</span></header>
   <main>
     <section class="viewport" aria-label="House simulation">
-      <div id="scene"></div>
-      <div class="scene-heading"><div class="eyebrow">01 / GROUND FLOOR</div><h1>A little change.<br>A different journey.</h1><p>Explore how a room changes the way we move.</p></div>
-      <div class="view-controls"><button id="orbit" class="active">Perspective</button><button id="top">Floor plan</button></div>
-      <div class="scene-caption"><span><i class="legend-dot"></i> Resident & route</span><span><i class="legend-dot amber"></i> Scenario obstacle</span><small>Drag to orbit · Scroll to zoom · Click a destination ring</small></div>
-      <div class="model-note">10536 S Tantau Ave, Cupertino<br><span>Approximate layout · Ground floor only</span></div>
+      <div id="scene"><div id="wide-view" class="camera-input" aria-label="Interactive character camera"></div></div>
+      <div class="view-controls" aria-label="Camera mode"><button id="orbit" class="active">Wide view</button><button id="first-person" aria-keyshortcuts="v">First person</button><button id="third-person" aria-keyshortcuts="f">Third person</button><button id="top">Floor plan</button></div>
+      <div id="camera-caption" class="camera-title"></div>
+      <div class="scene-caption"><span><i class="legend-dot"></i> Resident & route</span><span><i class="legend-dot amber"></i> Scenario obstacle</span><small id="camera-hint">WASD / arrows move · 1–6 switch characters<br>Drag to orbit · Scroll to zoom</small></div>
+      <div class="model-note">10536 S Tantau Ave, Cupertino<br><span id="floor-note">Approximate layout · Ground floor</span></div>
     </section>
     <aside>
-      <div class="panel-heading"><span class="eyebrow">THE EXPERIMENT</span><span class="step-count">01 — 03</span></div>
-      <h2>Make room to move.</h2><p class="intro">Choose a destination, change the passage, and watch the resident respond.</p>
+      <section class="control-section"><label class="speed-label" for="floor-level">Go to floor</label><select id="floor-level"><option value="ground">Ground floor</option><option value="upper">Second floor · 3 bedrooms</option></select><p id="floor-description" class="hint">Living spaces, kitchen, patio and attached ADU.</p></section>
       <section class="control-section"><h3><span>01</span> Choose a destination</h3><div class="destinations">${destinations.map((destination, index) => `<button data-destination="${destination.id}"><span class="destination-number">0${index + 1}</span><span><strong>${destination.label}</strong><small>${destination.description}</small></span><span class="arrow">↗</span></button>`).join("")}</div></section>
       <section class="control-section"><h3><span>02</span> Change the passage</h3><div class="segmented" aria-label="Passage scenario"><button data-scenario="clear" class="active" aria-pressed="true">Clear</button><button data-scenario="cart" aria-pressed="false">Add cart</button><button data-scenario="blocked" aria-pressed="false">Block route</button></div><p id="scenario-description" class="hint">A clear passage beside the kitchen island.</p></section>
       <section class="control-section resident-section"><h3><span>03</span> Observe the journey</h3><div class="resident-status"><div class="avatar">R</div><div><strong>Resident 01</strong><small id="status" role="status">Ready to explore</small></div><span id="status-dot" class="status-dot"></span></div><label class="speed-label" for="speed">Walking speed <output id="speed-value">0.9 m/s</output></label><input id="speed" type="range" min="0.4" max="1.6" step="0.1" value="0.9"><div class="metrics"><div><strong id="elapsed">00:00</strong><small>SIMULATION TIME</small></div><div><strong id="distance">0.0 <em>m</em></strong><small>DISTANCE WALKED</small></div></div><div class="playback"><button id="pause">Ⅱ Pause</button><button id="reset">↺ Reset resident</button></div></section>
-      <section class="control-section"><label class="speed-label" for="subject">Character</label><select id="subject">${SUBJECTS.map(subject => `<option value="${subject.id}">${subject.label}</option>`).join("")}</select><p id="motion-note" class="hint"></p><label class="figurine-label"><input id="figurine" type="checkbox" checked> Show grandma beside the start when controlling a robot</label><p id="figurine-status" class="hint" role="status">Loading grandma figurine…</p></section>
-      <section class="control-section"><label class="figurine-label"><input id="patio-fall" type="checkbox"> Patio fall demo</label><p class="hint">Choose a walking robot, enable this demo, then select Patio. The amber patch triggers a staged stumble and fall. Reset resident to stand up. This animation does not predict real falls.</p></section>
+      <section class="control-section"><label class="speed-label" for="subject">Character</label><select id="subject">${SUBJECTS.map(subject => `<option value="${subject.id}">${subject.label}</option>`).join("")}</select><p id="motion-note" class="hint"></p></section>
+      <section class="control-section"><h3>Fall animations</h3><label class="speed-label" for="fall-animation">Scene</label><select id="fall-animation"><option value="balcony">Fall from balcony</option><option value="patio">Slip on patio</option></select><label class="speed-label" for="animation-speed">Playback speed</label><select id="animation-speed"><option value="1">Normal</option><option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select><div class="playback"><button id="play-fall">▶ Play / replay fall</button></div><p id="fall-stage" class="hint" role="status">Watch the approach, fall, impact, and injured resting pose.</p><p class="hint">The balcony is an illustrative animation set beside the house. The grandma figurine tumbles as one piece; robot joints can brace and curl up after landing.</p><label class="figurine-label"><input id="patio-fall" type="checkbox"> Trigger patio fall while walking</label></section>
       <section class="event-section"><div class="event-title"><h3>Observations</h3><span>LIVE</span></div><ol id="events" aria-live="polite" aria-relevant="additions"></ol></section>
-      <details><summary>About this experiment</summary><p>Floor-plan-inspired geometry with illustrative furniture. The resident is fictional; speed and clearance are explicit scenario settings, not inferred from age. Obstacles are manually placed. Events describe route availability, not fall risk.</p><p>Reset preserves the selected scenario and speed. Amber outlines show the 0.28 m clearance used by navigation.</p><label><input id="debug" type="checkbox"> Show navigation clearance</label><label><input id="labels" type="checkbox" checked> Show room labels</label><a href="https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_42_1.jpg" target="_blank" rel="noreferrer">Source floor plan ↗</a></details>
+      <details><summary>About this experiment</summary><p>Floor-plan-inspired geometry with illustrative furniture. The resident is fictional; speed and clearance are explicit scenario settings, not inferred from age. Obstacles are manually placed. Events describe route availability, not fall risk.</p><p>Reset preserves the selected scenario and speed. Amber outlines show the 0.28 m clearance used by navigation.</p><label><input id="debug" type="checkbox"> Show navigation clearance</label><label><input id="labels" type="checkbox" checked> Show room labels</label><button id="export-house">Download this floor’s 3D layout (.glb)</button><p id="export-status" class="hint">Geometry reference for World Labs Chisel or Blender.</p><a href="https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_42_1.jpg" target="_blank" rel="noreferrer">Source floor plan ↗</a></details>
     </aside>
   </main>
   <footer><span>HOUSE LAB / SPATIAL SCENARIOS</span><span>Authored geometry · Three.js · Local simulation</span></footer>`;
@@ -43,19 +44,37 @@ try {
     '<div class="render-error">This demo needs WebGL. Try a browser with hardware acceleration enabled.</div>';
   throw error;
 }
+void view.assets.apply(visualConfig).then(results => {
+  for (const result of results) if (!result.ok) console.error(`[environment asset: ${result.id}]`, result.error);
+});
+element<HTMLButtonElement>("export-house").onclick = async () => {
+  const button = element<HTMLButtonElement>("export-house");
+  button.disabled = true;
+  try {
+    const { exportHouse } = await import("./exportHouse");
+    await exportHouse(simulation.level);
+    element("export-status").textContent = "Layout exported with full-height walls. Import the GLB into Chisel as a 3D reference.";
+  } catch (error) {
+    element("export-status").textContent = "Export failed. Please try again.";
+    console.error("House export failed", error);
+  } finally { button.disabled = false; }
+};
 const speedInput = element<HTMLInputElement>("speed");
 speedInput.min = "0.1";
 speedInput.step = "0.01";
+let animationSpeed = 1;
+element<HTMLSelectElement>("animation-speed").onchange = event => {
+  animationSpeed = Number((event.target as HTMLSelectElement).value);
+};
+element<HTMLButtonElement>("play-fall").onclick = () => {
+  const kind = element<HTMLSelectElement>("fall-animation").value as FallKind;
+  if (simulation.playFall(kind) && view.cameraMode() === "wide") view.setCameraMode("third-person");
+  renderInterface();
+};
 element<HTMLInputElement>("patio-fall").onchange = event =>
   simulation.setPatioFall((event.target as HTMLInputElement).checked);
-element<HTMLInputElement>("figurine").onchange = event =>
-  view.setFigurineVisible((event.target as HTMLInputElement).checked);
-void view.figurineReady.then(() => {
-  element("figurine-status").textContent = "Your figurine is ready. Select GRANDMA FIGURINE or press 6 to control her. Her body moves as one piece; limbs are not animated yet.";
-}).catch(error => {
-  element("figurine-status").textContent = "Grandma figurine could not load. Robot controls are still available.";
-  console.error("[figurine] load failed", error);
-});
+void view.figurineReady.catch(error =>
+  console.error("[figurine] load failed", error));
 async function selectSubject(id: string) {
   try {
     const next = await view.setSubject(id);
@@ -73,11 +92,17 @@ element<HTMLSelectElement>("subject").onchange = event =>
     void selectSubject(select.value);
     select.blur();
   };
-for (const button of document.querySelectorAll<HTMLButtonElement>(
-  "[data-destination]",
-))
-  button.onclick = () =>
-    requestDestination(button.dataset.destination as DestinationId);
+document.querySelector(".destinations")!.addEventListener("click", event => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-destination]");
+  if (button) requestDestination(button.dataset.destination as DestinationId);
+});
+element<HTMLSelectElement>("floor-level").onchange = event => {
+  const select = event.target as HTMLSelectElement;
+  if (simulation.requestFloor(select.value as FloorLevel) && view.cameraMode() === "wide") view.setCameraMode("third-person");
+  select.blur();
+  pressed.clear();
+  renderInterface();
+};
 for (const button of document.querySelectorAll<HTMLButtonElement>(
   "[data-scenario]",
 ))
@@ -97,13 +122,11 @@ element<HTMLInputElement>("speed").oninput = (event) => {
   simulation.speed = Number((event.target as HTMLInputElement).value);
   element("speed-value").textContent = `${simulation.speed.toFixed(2)} m/s`;
 };
-for (const id of ["orbit", "top"])
+for (const id of ["orbit", "top", "first-person", "third-person"])
   element<HTMLButtonElement>(id).onclick = () => {
-    view.setView(id === "top");
-    for (const other of ["orbit", "top"]) {
-      element(other).classList.toggle("active", other === id);
-      element(other).setAttribute("aria-pressed", String(other === id));
-    }
+    if (id === "first-person" || id === "third-person") view.setCameraMode(id);
+    else view.setView(id === "top");
+    renderInterface();
   };
 element<HTMLInputElement>("debug").onchange = (event) =>
   view.setDebug((event.target as HTMLInputElement).checked);
@@ -116,33 +139,66 @@ const timestamp = (seconds: number) =>
     .toString()
     .padStart(2, "0")}`;
 let lastEvents: unknown = null;
+let lastFloor: FloorLevel | null = null;
 function renderInterface() {
+  const upstairs = simulation.level === "upper";
+  element<HTMLSelectElement>("floor-level").value = simulation.stairTarget ?? simulation.level;
+  element<HTMLSelectElement>("floor-level").disabled = simulation.changingFloor;
+  if (lastFloor !== simulation.level) {
+    lastFloor = simulation.level;
+    document.querySelector(".destinations")!.innerHTML = simulation.availableDestinations.map((destination, index) =>
+      `<button data-destination="${destination.id}"><span class="destination-number">0${index + 1}</span><span><strong>${destination.label}</strong><small>${destination.description}</small></span><span class="arrow">↗</span></button>`).join("");
+  }
+  element("floor-note").textContent = `Approximate layout · ${upstairs ? "Second floor" : "Ground floor"}`;
+  element("floor-description").textContent = upstairs
+    ? "Recreated from your plan · 780 sq ft as labeled. Choose Ground floor to walk down the stairs."
+    : "Choose Second floor to walk to the stairs and climb upstairs.";
+  if (simulation.changingFloor) element("floor-description").textContent = simulation.onStairs ? "Walking on the staircase. Pause freezes the climb; reset cancels it." : "Walking to the staircase.";
+  element<HTMLInputElement>("patio-fall").disabled = upstairs || simulation.changingFloor;
+  element<HTMLInputElement>("patio-fall").checked = simulation.patioFallEnabled;
+  const cameraMode = view.cameraMode();
+  element("scene").dataset.cameraMode = cameraMode;
+  for (const id of ["orbit", "top", "first-person", "third-person"]) {
+    const active = id === "top" ? cameraMode === "wide" && view.isTopView()
+      : id === "orbit" ? cameraMode === "wide" && !view.isTopView() : cameraMode === id;
+    element(id).classList.toggle("active", active);
+    element(id).setAttribute("aria-pressed", String(active));
+  }
+  element("camera-caption").textContent = cameraMode === "wide" ? (view.isTopView() ? "Floor plan" : "Wide view")
+    : `${cameraMode === "first-person" ? "First person" : "Third person"} · ${simulation.subject.label}`;
+  element("camera-hint").textContent = cameraMode === "wide"
+    ? "WASD / arrows move · 1–6 switch · Drag to orbit · Scroll to zoom"
+    : "WASD / arrows move · 1–6 switch · V first person · F third person · Esc wide view";
   speedInput.value = String(simulation.speed);
   element("speed-value").textContent = `${simulation.speed.toFixed(2)} m/s`;
   element<HTMLSelectElement>("subject").value = simulation.subject.id;
   element("motion-note").textContent = simulation.subject.locomotion === "rigid"
-    ? "Controlling your grandma figurine. Arrows or WASD move and turn; destination buttons guide her through the house. F follows her."
+    ? "Controlling your grandma figurine. Arrows or WASD move and turn; choose a camera mode above the scene."
     : `${simulation.subject.motion.strideLength.toFixed(2)} m per gait cycle · Tunable movement preset. Keys 1–6 switch characters; arrows or WASD steer.`;
-  element<HTMLInputElement>("figurine").disabled = simulation.subject.locomotion === "rigid";
-  const target = destinations
+  element<HTMLButtonElement>("play-fall").disabled = simulation.changingFloor || upstairs || simulation.subject.locomotion === "quadruped";
+  element("fall-stage").textContent = upstairs ? "Fall animation sets are available on the ground floor." : simulation.subject.locomotion === "quadruped"
+    ? "Select a walking robot or the grandma figurine to play these animations."
+    : simulation.isFalling ? simulation.fallStage
+    : "Watch the approach, fall, impact, and injured resting pose.";
+  const target = simulation.availableDestinations
     .find((destination) => destination.id === simulation.destination)
     ?.label.toLowerCase();
   element("status").textContent = simulation.paused
     ? "Paused"
     : {
         idle: "Ready to explore",
-        walking: simulation.manual ? "Manual movement" : `Walking to ${target}`,
+        walking: simulation.changingFloor ? (simulation.onStairs ? (simulation.stairTarget === "upper" ? "Climbing upstairs" : "Walking downstairs") : "Walking to stairs") : simulation.manual ? "Manual movement" : `Walking to ${target}`,
         arrived: `Arrived · ${target}`,
         blocked: "Route blocked",
-        falling: "Stumbling · Patio fall demo",
-        fallen: "Robot down · Reset to stand up",
+        falling: simulation.fallKind === "balcony" ? simulation.fallStage : "Stumbling · Patio fall demo",
+        fallen: simulation.subject.locomotion === "rigid" ? "Grandma down · Replay or reset" : "Robot down · Reset to stand up",
       }[simulation.status];
   element("status-dot").className = `status-dot ${simulation.status}`;
   element("elapsed").textContent = timestamp(simulation.time);
   element("distance").innerHTML =
     `${simulation.distance.toFixed(1)} <em>m</em>`;
   element("pause").textContent = simulation.paused ? "▶ Resume" : "Ⅱ Pause";
-  element("scenario-description").textContent = {
+  element("scenario-description").textContent = upstairs ? "Passage scenarios are available on the ground floor." : {
     clear: "A clear passage beside the kitchen island.",
     cart: "The cart narrows one side. Look for a detour around the island.",
     blocked: "The barrier spans the room. Crossing requires removing it.",
@@ -150,6 +206,7 @@ function renderInterface() {
   for (const button of document.querySelectorAll<HTMLButtonElement>(
     "[data-scenario]",
   )) {
+    button.disabled = upstairs || simulation.changingFloor;
     const active = button.dataset.scenario === simulation.scenario;
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", String(active));
@@ -157,6 +214,7 @@ function renderInterface() {
   for (const button of document.querySelectorAll<HTMLButtonElement>(
     "[data-destination]",
   )) {
+    button.disabled = simulation.changingFloor;
     const active = button.dataset.destination === simulation.destination;
     button.classList.toggle("selected", active);
     button.setAttribute("aria-pressed", String(active));
@@ -202,13 +260,12 @@ window.addEventListener("keydown", (event) => {
     const next = view.subjects[slot];
     void selectSubject(next.id);
   }
-  if (key === "f") view.setFollow(!view.isFollowing());
+  if (key === "v") view.setCameraMode("first-person");
+  if (key === "f") view.setCameraMode("third-person");
+  if (key === "escape") view.setView(false);
   if (key === "+" || key === "=") view.zoomFollow(-0.5);
   if (key === "-" || key === "_") view.zoomFollow(0.5);
 });
-window.addEventListener("wheel", (event) => {
-  if (view.isFollowing()) view.zoomFollow(Math.sign(event.deltaY) * 0.35);
-}, { passive: true });
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
@@ -233,7 +290,7 @@ function frame(now: number) {
         fixedStep,
       );
     }
-    simulation.advance(fixedStep);
+    simulation.advance(fixedStep * (simulation.isFalling ? animationSpeed : 1));
     accumulator -= fixedStep;
   }
   view.update(simulation);

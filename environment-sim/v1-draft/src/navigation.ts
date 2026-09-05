@@ -1,9 +1,9 @@
-import { isWalkable, type HouseObject, type Point } from "./environment";
+import { floors, isWalkable, radius, type Rectangle, type HouseObject, type Point } from "./environment";
 const cell = 0.2;
 const columns = 56;
 const rows = 111;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.z - b.z);
-export function segmentClear(a: Point, b: Point, obstacles: HouseObject[]) {
+export function segmentClear(a: Point, b: Point, obstacles: HouseObject[], floorRegions: Rectangle[] = floors) {
   const steps = Math.max(1, Math.ceil(distance(a, b) / 0.05));
   for (let i = 0; i <= steps; i++)
     if (
@@ -12,7 +12,7 @@ export function segmentClear(a: Point, b: Point, obstacles: HouseObject[]) {
           x: a.x + ((b.x - a.x) * i) / steps,
           z: a.z + ((b.z - a.z) * i) / steps,
         },
-        obstacles,
+        obstacles, radius, floorRegions,
       )
     )
       return false;
@@ -23,10 +23,11 @@ export function planRoute(
   start: Point,
   goal: Point,
   obstacles: HouseObject[],
+  floorRegions: Rectangle[] = floors,
 ): Point[] | null {
-  if (!isWalkable(start, obstacles) || !isWalkable(goal, obstacles))
+  if (!isWalkable(start, obstacles, radius, floorRegions) || !isWalkable(goal, obstacles, radius, floorRegions))
     return null;
-  if (segmentClear(start, goal, obstacles)) return [{ ...goal }];
+  if (segmentClear(start, goal, obstacles, floorRegions)) return [{ ...goal }];
   const point = (key: number): Point => ({
     x: (key % columns) * cell,
     z: Math.floor(key / columns) * cell,
@@ -48,7 +49,7 @@ export function planRoute(
       .sort(
         (a, b) => distance(point(a), position) - distance(point(b), position),
       )
-      .find((key) => segmentClear(position, point(key), obstacles));
+      .find((key) => segmentClear(position, point(key), obstacles, floorRegions));
   };
   const startKey = nearest(start),
     goalKey = nearest(goal);
@@ -60,7 +61,7 @@ export function planRoute(
   const walkable = new Map<number, boolean>();
   const valid = (key: number) => {
     if (!walkable.has(key))
-      walkable.set(key, isWalkable(point(key), obstacles));
+      walkable.set(key, isWalkable(point(key), obstacles, radius, floorRegions));
     return walkable.get(key)!;
   };
   while (open.size) {
@@ -87,7 +88,7 @@ export function planRoute(
         let next = raw.length - 1;
         while (
           next > anchor + 1 &&
-          !segmentClear(raw[anchor], raw[next], obstacles)
+          !segmentClear(raw[anchor], raw[next], obstacles, floorRegions)
         )
           next--;
         smooth.push(raw[next]);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { Simulation } from '../src/simulation.ts'
 import { patioFallZone, contains } from '../src/environment.ts'
 import { subjectById } from '../src/robot/subjects.ts'
-import { FALL_DURATION, poseFall } from '../src/robot/fall.ts'
+import { BALCONY, BALCONY_APPROACH, BALCONY_AIR_TIME, BALCONY_DURATION, FALL_DURATION, poseFall } from '../src/robot/fall.ts'
 
 function enterPatio(simulation: Simulation) {
   simulation.requestDestination('patio')
@@ -100,4 +100,68 @@ test('fall pose starts upright and finishes prone with finite joint angles', () 
   assert.ok(middle > 0 && middle < Math.PI / 2)
   assert.equal(sample(1).pitch, Math.PI / 2)
   for (const angle of joints.values()) assert.ok(Number.isFinite(angle))
+})
+
+test('balcony animation walks off the deck, drops, and settles into an injured pose', () => {
+  const demo = new Simulation()
+  assert.equal(demo.playFall('balcony'), true)
+  assert.equal(demo.elevation, BALCONY.height)
+  const start = demo.position.z
+  demo.advance(BALCONY_APPROACH / 2)
+  assert.ok(demo.position.z > start)
+  assert.equal(demo.elevation, BALCONY.height)
+  assert.equal(demo.fallProgress, 0)
+  demo.advance(BALCONY_APPROACH / 2 + BALCONY_AIR_TIME / 2)
+  assert.ok(demo.elevation > 0 && demo.elevation < BALCONY.height)
+  assert.ok(demo.position.z > BALCONY.z + BALCONY.depth / 2)
+  assert.ok(demo.fallProgress > 0)
+  demo.advance(BALCONY_DURATION)
+  assert.equal(demo.status, 'fallen')
+  assert.ok(demo.elevation < 1e-10)
+  assert.equal(demo.injuryProgress, 1)
+  assert.equal(demo.events.filter(event => event.type === 'fallCompleted').length, 1)
+})
+
+test('balcony pause freezes elevation, position, and injury animation; replay restarts them', () => {
+  const demo = new Simulation()
+  demo.playFall('balcony')
+  demo.advance(BALCONY_APPROACH + 0.3)
+  demo.paused = true
+  const frozen = [demo.elevation, demo.position.z, demo.fallElapsed, demo.injuryProgress]
+  demo.advance(20)
+  assert.deepEqual([demo.elevation, demo.position.z, demo.fallElapsed, demo.injuryProgress], frozen)
+  demo.playFall('balcony')
+  assert.equal(demo.paused, false)
+  assert.equal(demo.elevation, BALCONY.height)
+  assert.equal(demo.fallElapsed, 0)
+  demo.reset()
+  assert.equal(demo.elevation, 0)
+  assert.equal(demo.isFalling, false)
+})
+
+test('grandma figurine supports explicit falls while quadrupeds reject the biped sequence', () => {
+  const demo = new Simulation()
+  demo.setSubject(subjectById('grandma-figurine'))
+  assert.equal(demo.playFall('balcony'), true)
+  demo.advance(BALCONY_DURATION + 1)
+  assert.equal(demo.status, 'fallen')
+  assert.equal(demo.subject.id, 'grandma-figurine')
+  demo.setSubject(subjectById('dog'))
+  const position = { ...demo.position }
+  assert.equal(demo.playFall('balcony'), false)
+  assert.deepEqual(demo.position, position)
+  assert.equal(demo.status, 'idle')
+})
+
+test('post-impact pose draws the knees and arms inward', () => {
+  const subject = subjectById('grandma')
+  const joints = new Map<string, number>()
+  const robot = { set: (name: string, angle: number) => joints.set(name, angle) }
+  poseFall(robot, subject.stance!, 0.3, 1, subject.motion, 1, 1, 0)
+  const extendedKnee = joints.get('left_knee_joint')!
+  const extendedElbow = joints.get('left_elbow_joint')!
+  const injured = poseFall(robot, subject.stance!, 0.3, 1, subject.motion, 1, 1, 1)
+  assert.ok(joints.get('left_knee_joint')! > extendedKnee)
+  assert.ok(joints.get('left_elbow_joint')! < extendedElbow)
+  assert.ok(injured.roll < -0.8)
 })

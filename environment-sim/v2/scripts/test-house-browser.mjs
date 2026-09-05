@@ -6,8 +6,9 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 try {
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,500));});
- await page.goto('http://127.0.0.1:5174/?house=1');
+ await page.goto('http://127.0.0.1:5174/simulation.html?house=1');
  await page.waitForFunction(()=>window.houseLab?.simulation.house && window.houseLab.viewer.animatedResident,{},{timeout:120000});
+ await page.evaluate(()=>{window.houseLab.simulation.autoHazardFalls=false;});
  await page.locator('[data-view="side"]').click();
  await page.locator('#floor-view').selectOption('all');
  await page.waitForTimeout(2500);

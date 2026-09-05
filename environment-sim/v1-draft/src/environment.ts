@@ -164,10 +164,17 @@ const furniture = (
 export const objects: HouseObject[] = [
   wall("adu-west", 0, 6.5, 0.16, 13),
   wall("adu-north", 2.2, 0, 4.4, 0.16),
-  wall("adu-east", 4.4, 6.5, 0.16, 13),
+  // Split with a 1 m doorway gap (z 11-12), clear of the internal dividers,
+  // adu-counter's clearance, and the sofa's clearance (which reaches to
+  // z=10.63), so the ADU is reachable from the great room, instead of a
+  // sealed box.
+  wall("adu-east-north", 4.4, 5.5, 0.16, 11),
+  wall("adu-east-south", 4.4, 12.5, 0.16, 1),
   wall("adu-bedroom-divider", 2.2, 3.6, 4.4, 0.14),
   wall("adu-kitchen-divider", 2.2, 8.4, 4.4, 0.14),
-  wall("adu-south", 2.2, 13, 4.4, 0.16),
+  // Open on the west side (x 0-1.3, clear of the stairs' footprint) so the
+  // ADU connects onward to the stairs/garage corridor instead of dead-ending.
+  wall("adu-south", 2.85, 13, 3.1, 0.16),
   wall("main-east", 11, 11, 0.16, 8),
   wall("patio-left", 5.3, 7, 1.8, 0.16),
   wall("patio-right", 9.7, 7, 2.6, 0.16),
@@ -175,7 +182,10 @@ export const objects: HouseObject[] = [
   wall("main-south-right", 9.15, 15, 3.7, 0.16),
   wall("garage-west", 0, 18, 0.16, 6),
   wall("garage-front", 2.9, 21, 5.8, 0.16),
-  wall("garage-back", 2.9, 15, 5.8, 0.16),
+  // Open on the west side (x 0-1.35) so the garage connects to the house
+  // instead of a sealed box. Kept clear of the stairs' footprint, which
+  // extends across most of the rest of this wall's width.
+  wall("garage-back", 3.575, 15, 4.45, 0.16),
   wall("garage-east", 5.8, 18, 0.16, 6),
   wall("foyer-front", 6.55, 22, 1.5, 0.16),
   wall("bedroom-front", 9.15, 22, 3.7, 0.16),

@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "fetch-sample": "node scripts/fetch-sample.mjs",
     "probe": "node scripts/probe.mjs",
-    "test": "tsx --test scripts/test-simulation.mjs",
+    "test": "tsx --test scripts/test-simulation.mjs scripts/test-hazards.mjs",
     "test:browser": "node scripts/test-browser.mjs",
     "test:environment": "node scripts/test-environment.mjs",
     "fetch-world": "node scripts/fetch-world.mjs",
@@ -24,7 +24,11 @@
     "test:house:browser": "node scripts/test-house-browser.mjs",
     "test:stairs": "node scripts/check-stair-clearance.mjs",
     "test:movement": "tsx --test scripts/test-movement.mjs",
-    "test:movement:browser": "node scripts/test-movement-browser.mjs"
+    "test:movement:browser": "node scripts/test-movement-browser.mjs",
+    "test:hazards": "node scripts/test-hazards-browser.mjs",
+    "test:recovery": "node scripts/test-hazard-recovery.mjs",
+    "test:walkthrough": "node scripts/test-walkthrough.mjs",
+    "test:house:walkthrough": "node scripts/test-house-walkthrough.mjs"
   },
   "dependencies": {
     "@sparkjsdev/spark": "2.1.0",

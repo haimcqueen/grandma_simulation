@@ -203,6 +203,74 @@ h1 {
   color: #889082;
   font-size: 9px;
 }
+.hazard-popup {
+  position: absolute;
+  left: 35px;
+  top: 185px;
+  max-width: 300px;
+  background: #fff;
+  border: 1px solid #dfe4d9;
+  border-left: 4px solid #9aa08c;
+  border-radius: 8px;
+  padding: 14px 14px 12px;
+  box-shadow: 0 8px 24px #253e2020;
+  z-index: 5;
+}
+.hazard-popup.sev-medium { border-left-color: #c9a15b; }
+.hazard-popup.sev-high { border-left-color: #c9784e; }
+.hazard-popup.sev-critical { border-left-color: #a3402f; }
+.hazard-popup-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.hazard-severity {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #eef0e9;
+  color: #6c776f;
+}
+.hazard-severity.sev-medium { background: #f5edd8; color: #8a6d2c; }
+.hazard-severity.sev-high { background: #f5e6da; color: #a3613f; }
+.hazard-severity.sev-critical { background: #f5e1db; color: #a3402f; }
+.hazard-room {
+  font-size: 9px;
+  color: #8e9786;
+  margin-right: auto;
+}
+.hazard-popup button {
+  border: 0;
+  background: none;
+  color: #99a192;
+  font-size: 12px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.hazard-popup button:hover {
+  color: #52694a;
+}
+.hazard-popup strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.hazard-popup p {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #59634f;
+  margin: 0 0 8px;
+}
+.hazard-popup small {
+  font-size: 9px;
+  color: #97a08c;
+  line-height: 1.5;
+}
 aside {
   padding: 29px 26px 20px;
   border-left: 1px solid #dce0d7;

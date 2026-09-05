@@ -1,12 +1,18 @@
 # House Lab — realistic v2 simulation
 
+**Current default:** the [manual walkthrough](../../docs/WALKTHROUGH-HANDOFF.md) shows only the realistic room, grandma and four camera views. The studio controls and hazard experiments described below now live at `/simulation.html` (`src/studio.ts`), separate from the default page.
+
+**Hazards are integrated:** see the [hazard merge and reuse notes](../../docs/HAZARD-INTEGRATION.md) for zone configuration, profiles, popups and validation.
+
 **Collaborators:** start with the [Unitree integration and reuse guide](../../docs/UNITREE-COLLABORATOR-GUIDE.md).
 
-The v1-style movement loop now runs **inside the photo-guided Tantau room**. The default page includes the team's articulated Unitree G1 robot, three connected destinations, automatic walking, a movable scenario cart, a passage barrier, pause/reset, camera views, geometry inspection and state export. Character artwork remains replaceable by the character teammate.
+The v1-style movement loop now runs **inside the photo-guided Tantau room**. The studio page includes the team's articulated Unitree G1 robot, three connected destinations, automatic walking, a movable scenario cart, a passage barrier, pause/reset, camera views, geometry inspection and state export. Character artwork remains replaceable by the character teammate.
 
 See the [v2.1 handoff](../../docs/implementation/v2.1/README.md) for realistic camera/cutaway behavior, teammate merge guidance, checks and limitations. V2.1 is an update to this application, not a separate source folder.
 
 The **connected upstairs milestone** is available at **http://127.0.0.1:5174/?house=1**. It adds a photo-guided primary bedroom, an authored U-shaped stair/landing connection, continuous return journeys, and per-floor views. See the [upstairs handoff](../../docs/implementation/upstairs/README.md) for assets, spatial assumptions and extension points.
+
+See the [flexible movement handoff](../../docs/implementation/movement/README.md) for click-to-walk, editable waypoint/wait programs, reversible WASD stairs, and current remote integration notes. Full authoring controls are at **http://127.0.0.1:5174/simulation.html?house=1**.
 
 ## Run and view
 
@@ -17,7 +23,7 @@ npm run dev
 
 Use Node 22.12+ or 24+.
 
-- Combined simulation: **http://127.0.0.1:5174/**
+- Combined studio: **http://127.0.0.1:5174/simulation.html**
 - Room inspection, source photos and anchor export: **http://127.0.0.1:5174/environment.html**
 - Authored v1-style fixture: **http://127.0.0.1:5174/simulation.html?fixture=1**
 - Original alignment probe: **http://127.0.0.1:5174/probe.html**
@@ -32,9 +38,9 @@ The resident automatically visits the kitchen approach, rear passage and living 
 
 **[ / ]** adjust posture intensity and **K** cycles the five robot appearances. These also have sidebar controls. Playback supports normal, half and quarter speed. First person uses the robot's eye position and body orientation; third person follows it in the realistic room. Body swaps preserve position, selected appearance and pause state. H1 is capped at 1.7 m to stay within the grid's existing height envelope; the toddler G1 is capped at 0.95 m. Crawl/trot retain their separate four-leg animation. The fixed navigation envelope remains 0.28 m / 1.7 m for all presets; it does not grant smaller characters access to unbaked cells or perform per-limb collision checks.
 
-**Fall animations** include forward trip, backward slip and sideways fall for the G1/H1. They begin at the current room position, constrain root movement to this room's navigation, stop the walking routine and support pause/replay/reset. Go2 disables biped fall playback. These are authored demos, without automatic hazard detection or ragdoll physics. Custom GLB residents need a fall-pose adapter before their fall control is enabled.
+**Fall animations** include forward trip, backward slip and sideways fall for the G1/H1. They begin at the current room position, constrain root movement to this room's navigation, stop the walking routine and support pause/replay/reset. Go2 disables biped fall playback. These are authored demos without image-based hazard detection or ragdoll physics. Grandma automatically falls at configured floor hazards, rests, gets up and resumes keyboard control or her destination. Disable this with the Hazards checkbox for alert-only movement. Explicit Play fall demos remain on the floor until replay/reset. Custom GLB residents need a fall-pose adapter before their fall control is enabled.
 
-**Connected stairs are available in the house mode** (`?house=1` or the environment selector). Choose Walk upstairs to approach the stairs, climb to the primary bedroom and continue to the foot of the bed; Walk downstairs returns to the living passage. Stair movement uses an authored continuous path over visible treads, without foot IK or balance physics. Falls, manual driving, body changes and obstacle edits are disabled during a transfer. Pause freezes it; Reset cancels it and returns to the current floor's spawn. The default single-room mode remains available.
+**Connected stairs are available in the house mode** (`?house=1` or the environment selector). Choose Walk upstairs to approach the stairs, climb to the primary bedroom and continue to the foot of the bed; Walk downstairs returns to the living passage. Stair movement uses an authored continuous path over visible treads, without foot IK or balance physics. WASD takes over a transfer: release to stop, S to backtrack. Falls, body changes and obstacle edits remain guarded. Pause freezes it; Reset cancels it and returns to the current floor's spawn. The default single-room mode remains available.
 
 Inside and Overview keep the realistic room visible. Follow tracks the resident and tests camera clearance against the collider. Camera drag and zoom remain available. The collision/navigation overlay is for inspecting approximate geometry, not a visual hazard detector.
 
@@ -122,3 +128,7 @@ node scripts/test-unitree.mjs
 Use the explicit IPv4 URL above: during development another older app was listening on localhost's IPv6 address. Port 5174 on 127.0.0.1 now serves v2; the earlier v1 server on that address was stopped.
 
 Latest verification (2026-09-05): build and 16 simulation tests pass; Unitree, room-fall and combined-route browser suites pass. First-person checks wait for actual rendered appearance, since RAD metadata can initialize before streamed detail is visible.
+
+## Hazard integration
+
+The feature/hazard-detection branch is integrated with the realistic app. Under **Hazards**, choose a scenario profile and walk toward Kitchen approach or Rear passage to encounter the demo cable, small objects or rug. Popups are dismissible. Grandma now falls and gets up automatically on contact with demo floor zones during keyboard or route movement; the Hazards checkbox can disable automatic falls. Prop visibility is independent of detection. Configure zones in `public/environment/tantau-simulation.json`; use `src/hazards.ts` and `src/hazard-view.ts` to reuse the tracker/rendering separately. Run `npm run test:hazards` for the browser checks. The combined simulation suite now has 27 passing tests. `npm run test:recovery` exercises arrow-key fall/get-up in first and third person, pause and route resumption.

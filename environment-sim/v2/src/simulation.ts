@@ -11,7 +11,8 @@ import { floorHeightAt } from "./navigation-grid";
 import { isWalkable, scenarioObjects } from "./environment";
 import { distance, planRoute, segmentClear } from "./navigation";
 import { postures, type Posture } from "./posture";
-import { roomFalls, roomFallFrame, roomFallDuration, type RoomFall, type RoomFallKind } from "./falls";
+import { roomFalls, roomFallFrame, roomFallTotalDuration, type RoomFall, type RoomFallKind } from "./falls";
+import { HazardTracker, conditionForSubject, hazardAt, hazardFallKinds, zoneKey, type HazardProfile } from "./hazards";
 
 export class Simulation {
   house?: House;
@@ -27,7 +28,7 @@ export class Simulation {
   route: Point[] = [];
   destination: string | null = null;
   scenario: Scenario = "clear";
-  status: "idle" | "walking" | "arrived" | "blocked" | "falling" | "fallen" = "idle";
+  status: "idle" | "walking" | "arrived" | "blocked" | "falling" | "fallen" | "recovering" = "idle";
   fall: RoomFall | null = null;
   private fallOrigin: Point;
   paused = false;
@@ -36,6 +37,22 @@ export class Simulation {
   hunch = 1;
   skin = "factory";
   playbackSpeed = 1;
+  hazardProfile: HazardProfile = "auto";
+  autoHazardFalls = true;
+  private triggeredZones = new Set<string>();
+  private resumeAfterFall: { manual: boolean; destination: string | null; point: Point | null } | null = null;
+  private readonly hazardTrackers = new Map<string, HazardTracker>();
+  private get hazardTracker() {
+    let tracker = this.hazardTrackers.get(this.environment.id);
+    if (!tracker) {
+      tracker = new HazardTracker({ zones: this.environment.hazardZones ?? [] });
+      tracker.onEnter = (_id, hit) => this.record("hazardEncountered",
+        `${hit.zone.room}: ${hit.hazard.object} · ${hit.severity} (${hit.condition} scenario).`, [this.characterId, this.floorId, hit.zone.hazardId]);
+      this.hazardTrackers.set(this.environment.id, tracker);
+    }
+    return tracker;
+  }
+  get pendingHazard() { return this.fall || this.floorJourney ? null : this.hazardTracker.pendingFor(this.characterId); }
   currentSpeed = 0;
   gaitPhase = 0;
   time = 0;
@@ -100,6 +117,7 @@ export class Simulation {
     const returned = journey.progress === 0 && input < 0;
     if (returned || journey.progress === length) {
       this.floorScenarios.set(this.floorId, this.scenario);
+      this.hazardTracker.reset(this.characterId);
       if (!returned) this.floorId = journey.targetFloor;
       this.environment = this.house!.floors.find(floor => floor.id === this.floorId)!.environment;
       this.scenario = this.floorScenarios.get(this.floorId) ?? "clear";
@@ -111,7 +129,7 @@ export class Simulation {
   }
   /** Stop where you are. On stairs, retain support and allow W/S to continue or reverse. */
   stopMovement() {
-    if (this.fall) return;
+    if (this.fall) { this.resumeAfterFall = null; this.route = []; this.destination = null; this.pointTarget = null; return; }
     if (this.floorJourney?.phase === "stairs") this.floorJourney.manual = true;
     else this.floorJourney = null;
     this.route = []; this.destination = null; this.pointTarget = null;
@@ -161,6 +179,31 @@ export class Simulation {
     this.posture = posture;
     this.profile.speed = postures[posture].speed;
     this.currentSpeed = 0;
+    this.updateHazards();
+  }
+  setHazardProfile(profile: HazardProfile) {
+    this.hazardProfile = profile;
+    this.updateHazards();
+  }
+  dismissHazard() { this.hazardTracker.dismiss(this.characterId); }
+  private updateHazards(moved = false) {
+    if (this.fall || this.floorJourney) return;
+    const condition = this.hazardProfile === "auto" ? conditionForSubject(this.posture)
+      : this.hazardProfile === "off" ? null : this.hazardProfile;
+    this.hazardTracker.update(this.characterId, this.position, condition);
+    for (const zone of this.environment.hazardZones ?? []) {
+      if (distance(this.position, zone) > zone.radius + 0.2) this.triggeredZones.delete(`${this.floorId}:${zoneKey(zone)}`);
+    }
+    const hit = moved && this.autoHazardFalls && this.posture === "grandma"
+      ? hazardAt(this.position, condition, this.environment.hazardZones ?? []) : null;
+    const kind = hit && hazardFallKinds[hit.zone.hazardId];
+    if (hit && kind && !this.triggeredZones.has(`${this.floorId}:${zoneKey(hit.zone)}`)) {
+      this.triggeredZones.add(`${this.floorId}:${zoneKey(hit.zone)}`);
+      const resume = { manual: this.manual, destination: this.destination, point: this.pointTarget && { ...this.pointTarget } };
+      if (!this.playFall(kind)) return;
+      this.fall!.autoRecover = true;
+      this.resumeAfterFall = resume;
+    }
   }
   setManual() {
     if (this.fall || this.paused) return;
@@ -234,6 +277,8 @@ export class Simulation {
       this.distance += actual;
       this.gaitPhase += actual * Math.sign(travel) / motion.strideLength + Math.abs(rotation) * 0.3;
       this.status = actual > 0.000001 || Math.abs(rotation) > 0.000001 ? "walking" : "idle";
+      this.updateHazards(actual > 0.000001);
+      if (this.fall) return;
     }
   }
   private replan(changed: boolean) {
@@ -306,7 +351,7 @@ export class Simulation {
     this.time += delta;
     if (this.floorJourney?.phase === "stairs") { this.advanceStairs(delta); return; }
     if (this.fall) {
-      this.fall.elapsed = Math.min(this.fall.elapsed + delta, roomFallDuration(this.fall.kind));
+      this.fall.elapsed = Math.min(this.fall.elapsed + delta, roomFallTotalDuration(this.fall));
       const frame = roomFallFrame(this.fall);
       const next = {
         x: this.fallOrigin.x + Math.sin(this.heading) * frame.forward + Math.cos(this.heading) * frame.lateral,
@@ -314,14 +359,29 @@ export class Simulation {
       };
       // Constrain root travel to this room's grid; articulated limbs are not collision bodies.
       if (segmentClear(this.environment, this.position, next, this.obstacles, this.profile.radius)) this.position = next;
-      if (frame.progress === 1 && this.status !== "fallen") {
+      if (frame.progress === 1 && this.status === "falling") {
         this.status = "fallen";
-        this.record("fallCompleted", "Fall demo complete. Replay or reset to walk again.", [this.characterId]);
+        this.record("fallCompleted", this.fall.autoRecover ? "Landed. Preparing to stand up." : "Fall demo complete. Replay or reset to walk again.", [this.characterId]);
+      }
+      if (frame.recovery > 0 && this.status !== "recovering") {
+        this.status = "recovering";
+        this.record("recoveryStarted", "Bracing, kneeling, then standing up.", [this.characterId]);
+      }
+      if (frame.recovery === 1) {
+        this.fall = null;
+        this.status = "idle";
+        this.gaitPhase = 0;
+        const resume = this.resumeAfterFall;
+        this.resumeAfterFall = null;
+        this.manual = resume?.manual ?? false;
+        this.record("recoveryCompleted", "Back on her feet. Movement restored.", [this.characterId]);
+        if (resume?.destination) this.requestDestination(resume.destination);
+        else if (resume?.point) this.requestPoint(resume.point);
       }
       return;
     }
     if (this.floorJourney?.manual && this.stairInput <= 0) { this.currentSpeed = 0; return; }
-    if (this.manual || this.status !== "walking") return;
+    if (this.manual || this.status !== "walking") { this.updateHazards(); return; }
     let remaining = this.profile.speed * delta;
     while (remaining > 0 && this.route.length) {
       const next = this.route[0],
@@ -330,7 +390,7 @@ export class Simulation {
         this.route.shift();
         continue;
       }
-      const travel = Math.min(length, remaining),
+      const travel = Math.min(length, remaining, 0.15),
         dx = next.x - this.position.x,
         dz = next.z - this.position.z;
       this.heading = Math.atan2(dx, dz);
@@ -340,6 +400,8 @@ export class Simulation {
       };
       this.distance += travel;
       this.gaitPhase += travel / postures[this.posture].motion.strideLength;
+      this.updateHazards(travel > 0);
+      if (this.fall) return;
       remaining -= travel;
       if (travel === length) this.route.shift();
     }
@@ -362,8 +424,11 @@ export class Simulation {
     if (this.floorJourney || postures[this.posture].crawl) return false;
     const scenario = roomFalls.find(fall => fall.id === kind);
     if (!scenario) return false;
+    this.hazardTracker.reset(this.characterId);
     if (this.fall) this.position = { ...this.fallOrigin };
+    this.resumeAfterFall = null;
     this.fallOrigin = { ...this.position };
+    this.pointTarget = null;
     this.fall = { kind, elapsed: 0 };
     this.manual = false;
     this.currentSpeed = 0;
@@ -377,6 +442,9 @@ export class Simulation {
   reset() {
     this.pointTarget = null; this.stairInput = 0;
     this.floorJourney = null;
+    this.triggeredZones.clear();
+    this.resumeAfterFall = null;
+    this.hazardTracker.reset(this.characterId);
     this.fall = null;
     this.manual = false;
     this.currentSpeed = 0;
@@ -417,6 +485,9 @@ export class Simulation {
       hunch: this.hunch,
       skin: this.skin,
       playbackSpeed: this.playbackSpeed,
+      hazardProfile: this.hazardProfile,
+      autoHazardFalls: this.autoHazardFalls,
+      pendingHazard: this.pendingHazard,
       currentSpeed: this.currentSpeed,
       gaitPhase: this.gaitPhase,
       time: this.time,

@@ -52,5 +52,31 @@
       "depth": 0.25
     }
   },
-  "navigationUrl": "/environment/tantau-navigation.json"
+  "navigationUrl": "/environment/tantau-navigation.json",
+  "hazardZones": [
+    {
+      "hazardId": "loose_rug",
+      "x": 1.125,
+      "z": 1.325,
+      "radius": 0.55,
+      "room": "Rear passage \u00b7 demo rug",
+      "propScale": 0.45
+    },
+    {
+      "hazardId": "loose_cords",
+      "x": 1.275,
+      "z": -0.2,
+      "radius": 0.5,
+      "room": "Living passage \u00b7 demo cable",
+      "propScale": 0.5
+    },
+    {
+      "hazardId": "small_objects_reachable",
+      "x": 1.725,
+      "z": -2.275,
+      "radius": 0.6,
+      "room": "Kitchen approach \u00b7 demo objects",
+      "propScale": 0.65
+    }
+  ]
 }

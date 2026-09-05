@@ -40,11 +40,13 @@ export class MovementProgram {
     if (this.simulation.fall || this.simulation.floorJourney?.phase === "stairs")
       throw new Error("Finish the fall or stair transfer before starting a new path.");
     // Validate all references before taking over the current movement.
+    let plannedFloor = this.simulation.floorId;
     for (const step of parsed) {
       if (step.type === "wait") continue;
-      const environment = step.floor && step.floor !== this.simulation.floorId
-        ? this.simulation.house?.floors.find(floor => floor.id === step.floor)?.environment : this.simulation.environment;
-      if (!environment) throw new Error(`Unknown floor: ${step.floor}`);
+      plannedFloor = step.floor ?? plannedFloor;
+      const environment = plannedFloor !== this.simulation.floorId
+        ? this.simulation.house?.floors.find(floor => floor.id === plannedFloor)?.environment : this.simulation.environment;
+      if (!environment) throw new Error(`Unknown floor: ${plannedFloor}`);
       if (step.type === "destination" && !environment.destinations.some(target => target.id === step.id))
         throw new Error(`Unknown destination: ${step.id}`);
     }

@@ -1,5 +1,7 @@
 # V2.1 handoff — realistic camera views and cutaways
 
+The hazard branch is now combined with these views. See the [hazard integration notes](../../HAZARD-INTEGRATION.md) for proximity alerts, independent props and map outlines.
+
 Updated 2026-09-05. Status: implemented and checked locally at the user's request. This is an incremental handoff for the shared [v2 application](../../../environment-sim/v2/README.md), not a second application or a package-version change. Integrated with remote main commit `8b602c0` (Unitree controls and falls). The v2.1 changes are intended for the same main branch; no separate app folder is needed.
 
 ## What teammates get

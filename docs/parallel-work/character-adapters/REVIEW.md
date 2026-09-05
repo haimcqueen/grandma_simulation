@@ -33,6 +33,8 @@ Separate **appearance/model** from **movement/scenario profile**. A Grandma/Unit
 
 ## Remote integration review
 
+**Update:** the subsequent movement work integrates remote main through `797b1f7`, preserves its clean walkthrough/studio split, and resolves the floor-detector, transfer/fall ownership and prop-visibility items below. These findings remain as review history. Character capability handling remains proposed.
+
 Fetched `origin/main` at `1d674c8`. It now includes hazard zones, automatic grandma falls and get-up recovery. Our local upstairs work is based on `d1f67de` and isolated on `feature/tantau-upstairs`. No remote code was overwritten or merged by this review.
 
 Before merging:

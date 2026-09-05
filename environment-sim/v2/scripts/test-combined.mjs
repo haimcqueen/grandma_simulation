@@ -7,8 +7,10 @@ const errors=[];page.on('pageerror',error=>errors.push(error.message));
 const ready=()=>page.waitForFunction(()=>window.houseLab?.viewer.mode==='world-simulation',{}, {timeout:60000});
 try {
  await mkdir(".artifacts", { recursive: true });
- await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/');await ready();
+ await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/simulation.html');await ready();
  await page.waitForFunction(() => window.houseLab?.viewer.animatedResident?.robot?.meshCount > 0);
+ // Isolate navigation/obstacle checks; test:recovery covers automatic hazard falls.
+ await page.locator('#hazard-falls').uncheck();
  assert.equal(await page.locator('#resident-name').innerText(), 'Unitree G1');
  const robotPose = () => page.evaluate(() => {
   const root = window.houseLab.viewer.resident.root;

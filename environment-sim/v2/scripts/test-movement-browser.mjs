@@ -4,8 +4,9 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
  page.on('pageerror',error=>errors.push(error.message));
- await page.goto('http://127.0.0.1:5174/?house=1');
+ await page.goto('http://127.0.0.1:5174/simulation.html?house=1');
  await page.waitForFunction(()=>window.houseLab?.simulation.house&&window.houseLab.viewer.animatedResident,{},{timeout:120000});
+ await page.evaluate(()=>{window.houseLab.simulation.autoHazardFalls=false;});
  await page.locator('[data-view="map"]').click();
  const clickPoint=async(point,shift=false)=>{
   const screen=await page.evaluate(point=>{const v=window.houseLab.viewer;v.update(window.houseLab.simulation);const p=new v.camera.position.constructor(point.x,.05,point.z).project(v.activeCamera);const r=v.renderer.domElement.getBoundingClientRect();return{x:r.x+(p.x+1)/2*r.width,y:r.y+(1-p.y)/2*r.height};},point);

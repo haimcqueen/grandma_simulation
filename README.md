@@ -1,8 +1,10 @@
 # House Lab
 
+**Current experience:** a clean, manual room walkthrough. See the [walkthrough handoff](docs/WALKTHROUGH-HANDOFF.md).
+
 **Collaborators:** start with the [Unitree integration and reuse guide](docs/UNITREE-COLLABORATOR-GUIDE.md).
 
-A browser-based house simulation with a photo-guided World Labs environment, the team's walking Unitree G1 robot, route planning and editable passage scenarios. The photo-guided room and robot demo is in **`environment-sim/v2/`**. V2 includes the team's Unitree G1/H1/Go2 bodies, articulated gait, arrow-key controls, first/third-person cameras and ground-level fall demos. Garden and upstairs reconstruction remain in **`environment-sim/v1-draft/`** and are not yet integrated into the realistic world.
+A full-screen realistic room with the team's Unitree G1 grandma. Walk with arrow keys or WASD and choose First person, Third person, Wide or Map. The default experience has no automatic walking, sidebar or added floor props. Shared simulation and character modules remain reusable in **`environment-sim/v2/`**.
 
 ## Quick start
 
@@ -14,7 +16,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5174/**. The room and collider load from public runtime URLs without Mint authentication or API keys. The resident starts walking automatically. Choose a destination, add a cart or barrier, pause/reset, or switch to the follow camera.
+Open **http://127.0.0.1:5174/**. The room and collider load from public runtime URLs without Mint authentication or API keys. Grandma waits for keyboard input. Release movement keys to stop. Camera shortcuts: F / V / B / M; R resets her position.
 
 ## Download the house for local use
 

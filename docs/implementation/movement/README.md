@@ -4,7 +4,7 @@ Implementation dated September 5, 2026. Builds on the connected two-floor enviro
 
 ## Interaction
 
-Open **http://127.0.0.1:5174/?house=1**. Click a visible floor to walk to that point. Drag still orbits. Shift-click appends waypoints to Path Studio. Use Map when selecting exact floor points; furniture, walls and unverified grid regions are not valid targets.
+Open **http://127.0.0.1:5174/simulation.html?house=1** for Path Studio. The simpler walkthrough at **http://127.0.0.1:5174/?house=1** supports WASD, click walking and floor transfers without the sidebar. The teammate's original manual ground-room view remains at `/`. Click a visible floor to walk to that point. Drag still orbits. Shift-click appends waypoints to Path Studio. Use Map when selecting exact floor points; furniture, walls and unverified grid regions are not valid targets.
 
 Path Studio accepts editable JSON, adds waits, loops, imports/exports and stops movement at the current position. A blocked command stops the program and offers Retry after clearing the obstruction. Picking a point on the other visible floor programs the stair transfer followed by the point request.
 
@@ -49,7 +49,7 @@ Programs are JSON data, not evaluated JavaScript. Validation accepts 1–256 ste
 - Movement contributor: `movement/program.ts`, `stair-motion.ts`, point requests and manual movement behavior.
 - UI contributor: `movement/studio.ts` is optional and separate from the executor.
 - Character contributor: consumes the same position/elevation/heading and actual travel; never moves the actor root independently.
-- Integration owner: keeps `main.ts` as the one loop and coordinates changes to `simulation.ts`/`viewer.ts` with hazard work. Do not fork a competing v2 folder.
+- Integration owner: keeps one loop per page (`main.ts` walkthrough, `studio.ts` authoring studio) and coordinates changes to `simulation.ts`/`viewer.ts` with hazard work. Do not fork a competing v2 folder.
 
 `stair-motion.ts` samples reversible distance along the connector. Floor transfer state records progress/manual ownership; W/S changes progress while the original room grid is bypassed only for the authored supported connector. Generic path commands continue to use A* and checked segments.
 
@@ -57,4 +57,17 @@ Programs are JSON data, not evaluated JavaScript. Validation accepts 1–256 ste
 
 Unit checks cover arbitrary targets, obstacle replanning, cross-floor programs, paused waits, retries/manual cancellation, staircase entry/reversal, wall sliding, malformed input and bounded zero-wait loops. Browser checks exercise real canvas clicks, Shift-click waypoints, wait editing, Stop here, WASD takeover on stairs, reversal and mobile layout.
 
-Run `npm run test:movement`, `npm run test:house`, and `npm test`. With Vite running, use `npm run test:movement:browser` and `npm run test:house:browser`. Integration with current remote hazard/recovery work is tracked in the final commit/handoff update.
+Run `npm run test:movement`, `npm run test:house`, and `npm test`. With Vite running, use `npm run test:movement:browser` and `npm run test:house:browser`. The latest remote manual walkthrough and hazard/recovery changes were merged locally from `797b1f7`. The detector now follows the active floor, transfer motion suppresses automatic falls, and hazard recovery resumes arbitrary point targets as well as named destinations. The default walkthrough keeps hazards and markers disabled on both floors. These changes remain on the feature branch pending push approval.
+
+## Review and acceptance
+
+The local feature branch is `feature/tantau-upstairs`. It includes an implementation commit and a separate merge/integration commit to preserve the teammate's history. No force push or remote publication is part of this handoff.
+
+Recommended two-minute review:
+
+1. Open the connected walkthrough, move with WASD and try First person/Wide/Top down.
+2. Choose Walk upstairs; press W to take control, release to stop, then S to backtrack. Resume W to reach the bedroom, then return downstairs.
+3. Open Path Studio, select Map and Shift-click two reachable points. Add a wait, run the path, then take over with WASD.
+4. Use Example to load a cross-floor program. Edit the JSON and export it for another agent.
+
+No grandma mesh replacement was bundled into this change. That remains a separate adapter task; the downloaded model has only an idle clip. The spatial navigation region is still conservative, and stairs constrain manual travel to a checked connector. Additional upstairs rooms and foot-contact physics remain future work.

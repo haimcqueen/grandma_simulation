@@ -1,0 +1,53 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #283139;
+  background: #e3e7e9;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; overflow: hidden; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid #4280b5; outline-offset: 4px; }
+button:disabled { cursor: wait; opacity: 0.55; }
+[hidden] { display: none !important; }
+#viewport { position: relative; width: 100%; height: 100dvh; overflow: hidden; }
+#viewport > canvas { display: block; width: 100%; height: 100%; }
+#app:not([data-ready="true"]) canvas { visibility: hidden; }
+.camera-views {
+  position: absolute; top: max(20px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  display: flex; gap: 3px; padding: 5px; z-index: 2;
+  border-radius: 12px; background: rgba(255, 255, 255, 0.93);
+  box-shadow: 0 2px 16px #00000014;
+}
+.camera-views button {
+  border: 0; border-radius: 8px; padding: 11px 18px; min-height: 44px;
+  color: #283139; background: transparent; white-space: nowrap; font-size: 13px; font-weight: 500;
+}
+.camera-views button:hover { background: #e9edef; }
+.camera-views button[aria-pressed="true"] { color: white; background: #354853; }
+.walk-hint {
+  position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  display: flex; gap: 24px; padding: 10px 16px; border-radius: 8px; z-index: 2;
+  background: rgba(255, 255, 255, 0.9); font-size: 12px; line-height: 1.5; white-space: nowrap;
+  pointer-events: none;
+}
+.hint-divider { margin: 0 6px; color: #8c979d; }
+#camera-hint { color: #58666e; }
+.loading-message {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: 18px;
+  align-items: center; justify-content: center; padding: 32px; text-align: center;
+}
+#retry { border: 0; background: #354853; color: white; padding: 12px 20px; border-radius: 8px; }
+#app[data-ready="true"] .loading-message { display: none; }
+#app:not([data-ready="true"]) .walk-hint { display: none; }
+@media (max-width: 600px) {
+  .camera-views { top: max(12px, env(safe-area-inset-top)); gap: 0; width: max-content; max-width: calc(100% - 16px); }
+  .camera-views button { padding: 10px 12px; font-size: 12px; }
+  .walk-hint { flex-direction: column; gap: 3px; text-align: center; bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+
+.house-actions { position: absolute; top: 90px; left: 20px; z-index: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 40px); padding: 8px; background: #fffffff0; border-radius: 10px; }
+.house-actions button, .house-actions a { padding: 9px; border: 0; border-radius: 6px; background: #edf1ec; color: #354853; font-size: 12px; text-decoration: none; }
+.house-actions span { font-size: 11px; }
+.camera-views { flex-wrap: wrap; justify-content: center; }
+@media (max-width: 600px) { .house-actions { top: 125px; left: 12px; } }

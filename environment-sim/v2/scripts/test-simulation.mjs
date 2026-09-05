@@ -166,7 +166,8 @@ test("grid navigation avoids blocked cells and rejects unsupported clearance", a
 
 const { readFileSync } = await import('node:fs');
 const roomDescriptor = JSON.parse(readFileSync(new URL('../public/environment/tantau-simulation.json', import.meta.url)));
-const realisticRoom = { ...roomDescriptor, navigation: JSON.parse(readFileSync(new URL('../public/environment/tantau-navigation.json', import.meta.url))) };
+// Navigation-only fixture. Automatic encounters/recovery are covered in test-hazards.mjs.
+const realisticRoom = { ...roomDescriptor, hazardZones: [], navigation: JSON.parse(readFileSync(new URL('../public/environment/tantau-navigation.json', import.meta.url))) };
 test('keyboard takeover cancels routes, ramps speed, brakes and preserves pause', () => {
   const simulation = new Simulation(realisticRoom);
   simulation.requestDestination('kitchen');
@@ -198,9 +199,16 @@ test('keyboard movement cannot tunnel through generated geometry or scenario blo
       simulation.setScenario(scenario);
       simulation.setManual();
       simulation.heading = direction * Math.PI / 6;
-      const start = { ...simulation.position };
-      simulation.drive(1, 0, 30);
-      assert.ok(segmentClear(realisticRoom, start, simulation.position, simulation.obstacles, simulation.profile.radius));
+      const longStep = new Simulation(realisticRoom);
+      longStep.setScenario(scenario); longStep.setManual(); longStep.heading = simulation.heading;
+      longStep.drive(1, 0, 30);
+      // Sliding may turn at a boundary: verify each traversed segment, not a straight chord across the entire journey.
+      for (let step = 0; step < 1800; step++) {
+        const before = { ...simulation.position };
+        simulation.drive(1, 0, 1 / 60);
+        assert.ok(segmentClear(realisticRoom, before, simulation.position, simulation.obstacles, simulation.profile.radius));
+      }
+      assert.ok(Math.hypot(longStep.position.x - simulation.position.x, longStep.position.z - simulation.position.z) < 1e-8);
       assert.equal(simulation.currentSpeed, 0);
       const phase = simulation.gaitPhase;
       simulation.drive(1, 0, 2);

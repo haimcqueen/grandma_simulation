@@ -2,7 +2,7 @@
 
 Implemented locally on 2026-09-05 in `environment-sim/v2/`. This milestone connects the existing photo-guided ground-floor great room to a newly generated primary bedroom through an authored U-shaped stair and landing. Other upstairs bedrooms, bathrooms and the complete hall are not included.
 
-Current integration base: `d1f67de`, isolated on local branch `feature/tantau-upstairs`; changes are not committed or pushed. Remote main advanced to `1d674c8` during this work with hazard/recovery features. Those changes were fetched and reviewed, not merged into this tested milestone. See the [character and integration review](../../parallel-work/character-adapters/REVIEW.md) before combining them.
+Integrated the teammate's manual walkthrough and hazard/recovery changes from `origin/main` at `797b1f7` on local branch `feature/tantau-upstairs`. Commits are prepared locally for review; pushing requires the user's approval. See the [movement handoff](../movement/README.md) for the current controls and reusable scripting API.
 
 ## Run and share
 
@@ -12,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5174/?house=1**, or choose **Tantau · connected floors** in the environment selector. The ordinary ground-floor simulation remains at `/`. Choose **Walk upstairs**, then **Walk downstairs** for the return journey. The house starts idle; Walk around tours destinations on the active floor.
+Open **http://127.0.0.1:5174/?house=1** for the simple two-floor walkthrough. Use **http://127.0.0.1:5174/simulation.html?house=1** for Path Studio, or choose **Tantau · connected floors** in the studio environment selector. The teammate's ordinary manual ground-floor walkthrough remains at `/`. Choose **Walk upstairs**, then **Walk downstairs** for the return journey. The house starts idle; Walk around tours destinations on the active floor.
 
 The app streams both assets from the public URLs in the manifests. Teammates need no generation key or login. Both worlds total approximately 96.66 MB including colliders; actual network transfer depends on RAD streaming and caching. For local copies:
 
@@ -55,11 +55,11 @@ World-space `cutouts` are explicit authored doorway/stair openings. They cut spl
 - `src/simulation.ts` owns one resident and clock. `requestFloor("upper", "primary")` plans a room route to the stair endpoint, traverses the 3D polyline, changes the active environment and continues to the destination. Reverse traversal uses the same points. Scenario state is retained independently per floor.
 - `src/stair-environment.ts` builds the visible connector from the same points. Movement follows a continuous ramp over treads; individual foot placement, balance and per-limb collision are not simulated. Stair speed is capped at 0.65 m/s.
 - `src/viewer.ts` owns both worlds, one Spark renderer, cameras and resident elevation. Floor-scoped edits prevent one floor's ceiling cut removing the other. Floor selection changes visibility, not resident location. Both floors appear during stair traversal.
-- `src/main.ts` owns the existing fixed-step loop and controls. Character integrations still provide a feet-rooted +Z-forward resident; the viewer owns root position, including elevation. No second animation loop or actor is introduced.
+- `src/main.ts` owns the simple walkthrough loop; `src/studio.ts` owns the development studio loop. Each page runs one loop. Character integrations still provide a feet-rooted +Z-forward resident; the viewer owns root position, including elevation. No second animation loop or actor is introduced.
 
 Ground, Upstairs and Both views retain realistic assets. Top down/Side/Overview support reversible camera cuts; Inside/First person/Third person restore full room surfaces. Map shows the active floor's navigation grid only, not a surveyed multi-floor diagram or detailed stair map.
 
-Pause freezes a transfer. Reset cancels it and returns to the **current** floor spawn (the source floor until the transfer completes), preserving scenario and speed. Manual drive, falls, obstacle edits and body changes cannot interrupt a transfer. A blocked approach or destination landing rejects the floor request and records `routeBlocked`; no teleport fallback is used.
+Pause freezes a transfer. Reset cancels it and returns to the **current** floor spawn (the source floor until the transfer completes), preserving scenario and speed. Manual drive can take over, stop and backtrack; falls, obstacle edits and body changes are guarded during a transfer. A blocked approach or destination landing rejects the floor request and records `routeBlocked`; no teleport fallback is used.
 
 ## Expanding this milestone
 
@@ -72,10 +72,10 @@ Do not align new rooms from one screenshot alone. Inspect collider/appearance fr
 ## Validation performed
 
 - Production build passed; the existing large Spark/Three bundle warning remains.
-- 16 existing simulation tests and five house tests passed, including every shipped destination pair, continuous ascent/descent, independent scenario state, blocked approach, pause/reset and invalid endpoint rejection.
+- 27 shared simulation/hazard tests, five house tests and eight movement tests passed, including every shipped destination pair, continuous ascent/descent, independent scenario state, blocked approach, pause/reset and invalid endpoint rejection.
 - `npm run test:stairs`: 189 sampled capsule positions along the authored route against both transformed generated colliders, excluding explicit cutouts; no contacts. This is a sampled static clearance check, not whole-body physics validation.
 - `npm run test:house:browser`: actual remote bedroom and ground assets, return journey, floor-scoped ceiling heights, camera modes, floor visibility, obstruction, export, mobile layout and fixture switching.
-- Existing cutaway and combined browser suites passed, including orbit/zoom, restored surfaces and actual-room character occlusion. Keyboard/fall regressions also passed during integration.
+- Existing walkthrough, cutaway, combined, keyboard, hazard, recovery and Unitree browser suites are included in the final integration checks. See the movement handoff for the recorded result.
 - All four assets downloaded successfully; byte counts and SHA-256 recorded in `public/environment/house/checksums.json`.
 
 Run `npm run build`, `npm test`, `npm run test:house`; with Vite running, run `npm run test:house:browser`. Download assets with `npm run fetch-house` before `npm run test:stairs`. Re-bake navigation and validate endpoints whenever transforms or geometry change.

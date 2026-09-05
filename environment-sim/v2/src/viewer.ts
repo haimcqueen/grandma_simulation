@@ -14,6 +14,7 @@ import { buildStairConnection, disposeStairConnection } from "./stair-environmen
 import type { Simulation } from "./simulation";
 import { postures, type Posture } from "./posture";
 import { defaultRobotAssets, type RobotAsset } from "./robot-assets";
+import { RoomHazardView } from "./hazard-view";
 
 export class Viewer {
   readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -37,6 +38,8 @@ export class Viewer {
   );
   readonly debug = new THREE.Group();
   readonly destinations = new THREE.Group();
+  readonly hazards = new RoomHazardView();
+  hazardPropsVisible = true;
   get asset() { return this.worldAsset; }
   house?: House;
   floorView = "auto";
@@ -208,6 +211,8 @@ export class Viewer {
     this.topCamera.updateProjectionMatrix();
   }
   private refreshDestinationMarkers() {
+    this.hazards.setEnvironment(this.environment);
+    (this.mode === "world-simulation" ? this.overlayScene : this.scene).add(this.hazards.root);
     disposeMeshes(this.destinations);
     this.destinations.clear();
     for (const destination of this.environment.destinations) {
@@ -294,7 +299,7 @@ export class Viewer {
     this.controls.update();
   }
   private attachSimulation(parent: THREE.Object3D) {
-    parent.add(this.resident.root, this.dynamic, this.route, this.debug, this.destinations);
+    parent.add(this.resident.root, this.dynamic, this.route, this.debug, this.destinations, this.hazards.root);
   }
   async loadResident(assets: ResidentAssets) {
     return this.replaceResident(() => loadAnimatedResident(assets));
@@ -463,6 +468,8 @@ export class Viewer {
         if (["top", "side", "overview"].includes(this.view)) this.setView(this.view);
       }
     }
+    this.hazards.root.visible = this.hazardPropsVisible && this.mode !== "world";
+    this.hazards.showZones(this.view === "map" || this.debugVisible);
     const cut = this.mode === "world-simulation" && this.cutawayEnabled &&
       (this.view === "top" || this.view === "side" || this.view === "overview");
     (this.worldScene.background as THREE.Color).set(cut ? "#edece5" : "#29372f");
@@ -535,6 +542,7 @@ export class Viewer {
       }
     }
     const activeFloorVisible = !this.house || this.visibleFloor === "all" || this.visibleFloor === simulation.floorId;
+    this.hazards.root.visible = this.hazardPropsVisible && this.mode !== "world" && activeFloorVisible && !simulation.floorJourney;
     this.dynamic.visible = activeFloorVisible;
     this.destinations.visible = activeFloorVisible;
     this.debug.visible = this.debugVisible && activeFloorVisible;
@@ -611,6 +619,7 @@ export class Viewer {
     }
   }
   dispose() {
+    this.hazards.dispose();
     this.loadRevision++;
     this.residentRevision++;
     this.resizeObserver.disconnect();

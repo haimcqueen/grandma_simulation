@@ -48,3 +48,18 @@ test('program validation rejects malformed input and bounded zero-wait loops yie
  const sim=new Simulation(tantauFixture),program=new MovementProgram(sim);program.run([{type:'wait',seconds:0}],{loop:true});for(let i=0;i<100;i++){sim.advance(1/60);program.advance();}assert.equal(program.status,'running');
  program.cancel();assert.equal(program.status,'cancelled');
 });
+test('hazard recovery resumes a point target and floor transfer cannot trigger a fall',async()=>{
+ const sim=await houseFixture(),program=new MovementProgram(sim);
+ program.run([{type:'walk',point:{x:1.275,z:2.225}}]);
+ until(sim,program,()=>program.status==='completed');
+ assert.ok(sim.events.some(event=>event.type==='recoveryCompleted'));assert.ok(sim.pointTarget);assert.equal(sim.status,'arrived');
+ sim.reset();assert.ok(sim.requestFloor('upper'));
+ until(sim,null,()=>{assert.equal(sim.fall,null);return sim.floorId==='upper';});
+ // Empty upstairs zones must not reuse a downstairs tracker, including matching X/Z.
+ sim.position={x:1.275,z:-.2};sim.advance(1/60);assert.equal(sim.pendingHazard,null);
+});
+test('floor commands establish the context for later unqualified destination steps',async()=>{
+ const sim=await houseFixture(),program=new MovementProgram(sim);
+ program.run([{type:'floor',floor:'upper'},{type:'destination',id:'primary'}]);
+ until(sim,program,()=>program.status==='completed');assert.equal(sim.floorId,'upper');assert.equal(sim.destination,'primary');
+});

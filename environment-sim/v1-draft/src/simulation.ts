@@ -16,6 +16,8 @@ import { planRoute, segmentClear } from "./navigation";
 import { angleDifference, approach } from "./robot/motion";
 import { SUBJECTS, type Subject } from "./robot/subjects";
 import { BALCONY_APPROACH, balconyFrame, fallDuration, situationFrame, type FallKind } from "./robot/fall";
+import { conditionForSubject, type HazardHit } from "./hazards";
+import { HazardTracker } from "./hazard-tracker";
 export type SimulationEvent = {
   time: number;
   type: string;
@@ -123,11 +125,27 @@ export class Simulation {
   events: SimulationEvent[] = [];
   /** Manual drive suspends task planning; the resident is steered directly. */
   manual = false;
+  /**
+   * Hazard-zone detection (hand-authored, see hazards.ts) lives entirely in
+   * this standalone tracker — it has no dependency on Simulation and can be
+   * driven by any other simulation model the same way (see hazard-tracker.ts).
+   */
+  private hazardTracker = new HazardTracker();
+  private static readonly HAZARD_ENTITY_ID = "resident-01";
+  /** The hazard currently flagged for the popup, if any. */
+  get pendingHazard(): HazardHit | null {
+    return this.level === "ground" && !this.changingFloor ? this.hazardTracker.pendingFor(Simulation.HAZARD_ENTITY_ID) : null;
+  }
   get turnRate() { return this.subject.motion.turnRate; }
   get obstacles() {
     return this.level === "upper" ? upperObjects : [...objects, ...scenarioObjects(this.scenario)];
   }
   constructor() {
+    this.hazardTracker.onEnter = (_entityId, hit) => this.record(
+      "hazardEncountered",
+      `${hit.zone.room}: ${hit.hazard.object} — ${hit.reason}`,
+      ["resident-01", hit.zone.hazardId],
+    );
     this.record("ready", "Resident ready in the living room.", ["resident-01"]);
   }
   setSubject(subject: Subject) {
@@ -137,6 +155,20 @@ export class Simulation {
     this.currentSpeed = 0;
     this.gaitPhase = 0;
     this.gaitBlend = 0;
+    // A different body can read differently against the same spot (e.g. a
+    // toddler-only hazard), so re-check immediately even without moving.
+    this.updateHazard();
+  }
+  dismissHazard() {
+    this.hazardTracker.dismiss(Simulation.HAZARD_ENTITY_ID);
+  }
+  /** Hand-authored zone check (hazards.ts) — not automatic hazard detection. */
+  private updateHazard() {
+    this.hazardTracker.update(
+      Simulation.HAZARD_ENTITY_ID,
+      this.position,
+      this.level === "ground" && !this.changingFloor ? conditionForSubject(this.subject.id) : null,
+    );
   }
   setPatioFall(enabled: boolean) {
     this.patioFallEnabled = this.level === "ground" && enabled;
@@ -253,6 +285,7 @@ export class Simulation {
       this.distance += actual;
       this.animateMotion(actual * Math.sign(travel), rotation, step);
       this.status = actual > 0.000001 || Math.abs(rotation) > 0.000001 ? "walking" : "idle";
+      this.updateHazard();
       if (this.checkPatioFall(actual)) return;
     }
   }
@@ -374,6 +407,7 @@ export class Simulation {
       };
       this.distance += travel;
       this.animateMotion(travel, rotation, delta);
+      this.updateHazard();
       if (this.checkPatioFall(travel)) return;
       if (travel === length) {
         this.route.shift();
@@ -419,6 +453,7 @@ export class Simulation {
     this.gaitPhase = 0;
     this.gaitBlend = 0;
     this.events = [];
+    this.hazardTracker.reset(Simulation.HAZARD_ENTITY_ID);
     this.revision++;
     this.record(
       "reset",

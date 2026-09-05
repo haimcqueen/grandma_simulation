@@ -16,6 +16,12 @@ app.innerHTML = `
       <div id="camera-caption" class="camera-title"></div>
       <div class="scene-caption"><span><i class="legend-dot"></i> Resident & route</span><span><i class="legend-dot amber"></i> Scenario obstacle</span><small id="camera-hint">WASD / arrows move · 1–6 switch characters<br>Drag to orbit · Scroll to zoom</small></div>
       <div class="model-note">10536 S Tantau Ave, Cupertino<br><span id="floor-note">Approximate layout · Ground floor</span></div>
+      <div id="hazard-popup" class="hazard-popup" role="alert" hidden>
+        <div class="hazard-popup-top"><span id="hazard-severity" class="hazard-severity"></span><span id="hazard-room" class="hazard-room"></span><button id="hazard-dismiss" aria-label="Dismiss">✕</button></div>
+        <strong id="hazard-object"></strong>
+        <p id="hazard-reason"></p>
+        <small>Hand-authored hazard zone for <span id="hazard-condition"></span> — not automatically detected.</small>
+      </div>
     </section>
     <aside>
       <section class="control-section"><label class="speed-label" for="floor-level">Go to floor</label><select id="floor-level"><option value="ground">Ground floor</option><option value="upper">Second floor · 3 bedrooms</option></select><p id="floor-description" class="hint">Living spaces, kitchen, patio and attached ADU.</p></section>
@@ -25,7 +31,7 @@ app.innerHTML = `
       <section class="control-section"><label class="speed-label" for="subject">Character</label><select id="subject">${SUBJECTS.map(subject => `<option value="${subject.id}">${subject.label}</option>`).join("")}</select><p id="motion-note" class="hint"></p></section>
       <section class="control-section"><h3>Fall animations</h3><label class="speed-label" for="fall-animation">Scene</label><select id="fall-animation">${FALL_SCENARIOS.map(scene => `<option value="${scene.id}">${scene.label}</option>`).join("")}</select><label class="speed-label" for="animation-speed">Playback speed</label><select id="animation-speed"><option value="1">Normal</option><option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select><div class="playback"><button id="play-fall">▶ Play / replay fall</button></div><p id="fall-stage" class="hint" role="status">Watch the approach, fall, impact, and injured resting pose.</p><p id="fall-description" class="hint"></p><p class="hint">Authored movement demos. The grandma figurine tumbles as one piece; robots use articulated poses.</p><label class="figurine-label"><input id="patio-fall" type="checkbox"> Trigger patio fall while walking</label></section>
       <section class="event-section"><div class="event-title"><h3>Observations</h3><span>LIVE</span></div><ol id="events" aria-live="polite" aria-relevant="additions"></ol></section>
-      <details><summary>About this experiment</summary><p>Floor-plan-inspired geometry with illustrative furniture. The resident is fictional; speed and clearance are explicit scenario settings, not inferred from age. Obstacles are manually placed. Events describe route availability, not fall risk.</p><p>Reset preserves the selected scenario and speed. Amber outlines show the 0.28 m clearance used by navigation.</p><label><input id="debug" type="checkbox"> Show navigation clearance</label><label><input id="labels" type="checkbox" checked> Show room labels</label><button id="export-house">Download this floor’s 3D layout (.glb)</button><p id="export-status" class="hint">Geometry reference for World Labs Chisel or Blender.</p><a href="https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_42_1.jpg" target="_blank" rel="noreferrer">Source floor plan ↗</a></details>
+      <details><summary>About this experiment</summary><p>Floor-plan-inspired geometry with illustrative furniture. The resident is fictional; speed and clearance are explicit scenario settings, not inferred from age. Obstacles are manually placed. Events describe route availability, not fall risk.</p><p>Reset preserves the selected scenario and speed. Amber outlines show the 0.28 m clearance used by navigation.</p><label><input id="debug" type="checkbox"> Show navigation clearance</label><label><input id="labels" type="checkbox" checked> Show room labels</label><label><input id="hazard-props" type="checkbox" checked> Show hazard objects</label><button id="export-house">Download this floor’s 3D layout (.glb)</button><p id="export-status" class="hint">Geometry reference for World Labs Chisel or Blender.</p><a href="https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_42_1.jpg" target="_blank" rel="noreferrer">Source floor plan ↗</a></details>
     </aside>
   </main>
   <footer><span>HOUSE LAB / SPATIAL SCENARIOS</span><span>Authored geometry · Three.js · Local simulation</span></footer>`;
@@ -119,6 +125,10 @@ element<HTMLButtonElement>("reset").onclick = () => {
   simulation.reset();
   renderInterface();
 };
+element<HTMLButtonElement>("hazard-dismiss").onclick = () => {
+  simulation.dismissHazard();
+  renderHazardPopup();
+};
 element<HTMLInputElement>("speed").oninput = (event) => {
   simulation.speed = Number((event.target as HTMLInputElement).value);
   element("speed-value").textContent = `${simulation.speed.toFixed(2)} m/s`;
@@ -133,15 +143,39 @@ element<HTMLInputElement>("debug").onchange = (event) =>
   view.setDebug((event.target as HTMLInputElement).checked);
 element<HTMLInputElement>("labels").onchange = (event) =>
   view.setLabels((event.target as HTMLInputElement).checked);
+element<HTMLInputElement>("hazard-props").onchange = (event) =>
+  view.setHazardProps((event.target as HTMLInputElement).checked);
 const timestamp = (seconds: number) =>
   `${Math.floor(seconds / 60)
     .toString()
     .padStart(2, "0")}:${Math.floor(seconds % 60)
     .toString()
     .padStart(2, "0")}`;
+let shownHazard: unknown = null;
+function renderHazardPopup() {
+  const current = simulation.pendingHazard;
+  if (current === shownHazard) return;
+  shownHazard = current;
+  const popup = element("hazard-popup");
+  if (!current) {
+    popup.hidden = true;
+    return;
+  }
+  popup.hidden = false;
+  popup.className = `hazard-popup sev-${current.severity}`;
+  const severity = element("hazard-severity");
+  severity.textContent = current.severity;
+  severity.className = `hazard-severity sev-${current.severity}`;
+  element("hazard-room").textContent = current.zone.room;
+  element("hazard-object").textContent = current.hazard.object;
+  element("hazard-reason").textContent = current.reason;
+  element("hazard-condition").textContent =
+    current.condition === "elderly" ? "older adults" : "toddlers";
+}
 let lastEvents: unknown = null;
 let lastFloor: FloorLevel | null = null;
 function renderInterface() {
+  renderHazardPopup();
   const upstairs = simulation.level === "upper";
   element<HTMLSelectElement>("floor-level").value = simulation.stairTarget ?? simulation.level;
   element<HTMLSelectElement>("floor-level").disabled = simulation.changingFloor;

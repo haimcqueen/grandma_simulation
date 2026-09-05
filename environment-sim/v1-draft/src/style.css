@@ -496,6 +496,19 @@ input[type="range"] {
   border-color: #365b44;
   color: #fff;
 }
+.playback button.needs-attention {
+  background: #a3402f;
+  border-color: #a3402f;
+  color: #fff;
+  animation: needs-attention-pulse 1.4s ease-in-out infinite;
+}
+@keyframes needs-attention-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 #a3402f55; }
+  50% { box-shadow: 0 0 0 6px #a3402f00; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .playback button.needs-attention { animation: none; }
+}
 .event-section {
   border-top: 1px solid #e2e6d9;
   padding-top: 17px;

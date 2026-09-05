@@ -179,6 +179,7 @@ function renderInterface() {
   element("distance").innerHTML =
     `${simulation.distance.toFixed(1)} <em>m</em>`;
   element("pause").textContent = simulation.paused ? "▶ Resume" : "Ⅱ Pause";
+  element("reset").classList.toggle("needs-attention", simulation.status === "fallen");
   element("scenario-description").textContent = {
     clear: "A clear passage beside the kitchen island.",
     cart: "The cart narrows one side. Look for a detour around the island.",

@@ -2,6 +2,7 @@ import { loadHouse } from "./house-loader";
 import { attachClickWalking } from "./movement/pointer";
 import { MovementProgram } from "./movement/program";
 import * as THREE from "three";
+import { createFallDangerOverlay } from "./fall-danger-overlay";
 import { rebuildReplacementNavigation } from "./replacement-navigation";
 import { tantauOttoman, loadRoomObject } from "./room-objects";
 import { parseWorldAsset } from "./asset-manifest";
@@ -25,6 +26,7 @@ app.innerHTML = `
   <div class="walk-hint"><span>↑ ↓ Move <span class="hint-divider">/</span> ← → Turn <span class="hint-divider">/</span> WASD</span><span id="camera-hint">Drag to look · Scroll to zoom</span></div>
 </main>`;
 const viewport = document.querySelector<HTMLElement>("#viewport")!;
+const fallDanger = createFallDangerOverlay(viewport);
 const status = document.querySelector<HTMLElement>("#load-status")!;
 const retry = document.querySelector<HTMLButtonElement>("#retry")!;
 const hint = document.querySelector<HTMLElement>("#camera-hint")!;
@@ -62,6 +64,7 @@ for (const button of buttons) button.onclick = () => {
 };
 
 async function start() {
+  fallDanger.update(null, "idle");
   ready = false;
   retry.hidden = true;
   status.textContent = "Loading the room…";
@@ -153,6 +156,7 @@ async function start() {
         floorButton.textContent = simulation!.floorId === "ground" ? "Walk upstairs" : "Walk downstairs";
         if (movement!.status === "blocked") document.querySelector<HTMLElement>("#movement-status")!.textContent = movement!.message;
       }
+      fallDanger.update(simulation!.fall, simulation!.status);
     });
     // Inspection hook for integration tests and alternate hosts, without UI dependencies.
     Object.assign(window, { houseLab: { get simulation() { return simulation; }, get viewer() { return viewer; }, get movement() { return movement; } } });
@@ -173,6 +177,7 @@ if (import.meta.hot) import.meta.hot.dispose(() => {
   ready = false;
   disposeClickWalking?.();
   keyboard.dispose();
+  fallDanger.dispose();
   viewer?.renderer.setAnimationLoop(null);
   viewer?.dispose();
 });

@@ -1,4 +1,5 @@
 import { GROUND_FALL_DURATIONS, groundFallFrame, poseFall } from "../../v1-draft/src/robot/fall-motion";
+import type { FallHazard } from "./fall-danger";
 
 /** Room-local demos. No patio, balcony or stair coordinates are imported. */
 export const roomFalls = [
@@ -7,7 +8,7 @@ export const roomFalls = [
   { id: "sideways", label: "Lose balance sideways", description: "Sway sideways and land on the hip and shoulder." },
 ] as const;
 export type RoomFallKind = typeof roomFalls[number]["id"];
-export type RoomFall = { kind: RoomFallKind; elapsed: number; autoRecover?: boolean; obstacle?: { travel: number; lateral?: number; solidId?: string } };
+export type RoomFall = { kind: RoomFallKind; elapsed: number; hazard?: FallHazard; autoRecover?: boolean; obstacle?: { travel: number; lateral?: number; solidId?: string } };
 export const RECOVERY_REST = 1.1;
 export const RECOVERY_DURATION = 3.8;
 export const roomFallFrame = (fall: RoomFall) => {

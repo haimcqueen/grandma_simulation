@@ -222,6 +222,8 @@ export class Simulation {
       if (!this.playFall(kind)) return;
       this.fall!.autoRecover = true;
       this.fall!.obstacle = obstacleFall;
+      const danger = this.environment.hazardZones?.find(zone => zoneKey(zone) === zoneKey(hit.zone))?.danger;
+      this.fall!.hazard = { id: hit.zone.hazardId, label: hit.zone.room, danger: danger ? { ...danger } : undefined };
       this.resumeAfterFall = resume;
     }
   }

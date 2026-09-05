@@ -14,8 +14,8 @@ import "./style.css";
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <header><a class="wordmark" href="/">HOUSE<span>LAB</span><i>02</i></a><div class="address">10536 S Tantau Avenue <span>Cupertino, California</span></div><a class="mint-link" href="https://mint.gg/chat/ph76aa258at54gvzs8ytwm5je18dtcpx" target="_blank" rel="noreferrer">World source ↗</a></header>
 <main><section id="viewport"><div class="scene-heading"><div class="eyebrow" id="scene-label">GROUND FLOOR / INTERACTIVE STUDY</div><h1 id="scene-title">A little room<br>to move.</h1><p id="provenance">Authored approximation · listing-inspired materials</p></div>
-<div class="view-controls" aria-label="Camera views"><button data-view="overview" class="active">Overview</button><button data-view="interior">Inside</button><button data-view="follow">Third person</button><button data-view="first">First person</button></div>
-<div id="notice" role="status" hidden></div><div class="scene-footer"><span id="scene-hint">Drag to orbit · Scroll to zoom</span><label><input type="checkbox" id="debug"> Show geometry</label></div></section>
+<div class="view-controls" aria-label="Camera views"><button data-view="overview" class="active">Overview</button><button data-view="interior">Inside</button><button data-view="follow">Third person</button><button data-view="first">First person</button><button data-view="top">Top down</button><button data-view="side">Side</button><button data-view="map">Map</button></div>
+<div id="cutaway-controls" hidden><label><input type="checkbox" id="cutaway-enabled" checked> Reveal interior</label><label>Wall height <input id="cutaway-height" type="range" min="0.6" max="3.3" step="0.1" value="1.8"><output id="cutaway-value">1.8 m</output></label></div><div id="map-legend" hidden>Navigation map · green: walkable · rings: destinations<br>Blank areas: blocked or unverified · dimensions estimated</div><div id="notice" role="status" hidden></div><div class="scene-footer"><span id="scene-hint">Drag to orbit · Scroll to zoom</span><label><input type="checkbox" id="debug"> Show geometry</label></div></section>
 <aside><div class="eyebrow">SCENARIO STUDIO</div><h2>Everyday journeys.</h2><p class="intro">Explore how a small change in a room changes the way through it.</p>
 <label class="field-label" for="environment">Environment</label><select id="environment"><option value="fixture">V1-style · authored fixture</option><option value="sample">World Labs · sample inspection</option></select>
 <p class="source-note" id="environment-note">Estimated layout, inspired by the listing. The realistic room is available in the environment selector.</p>
@@ -176,6 +176,12 @@ element<HTMLSelectElement>("playback-speed").onchange = event => {
 element<HTMLInputElement>("debug").onchange = (event) => {
   viewer.debugVisible = (event.target as HTMLInputElement).checked;
 };
+element<HTMLInputElement>("cutaway-enabled").onchange = (event) => {
+  viewer.cutawayEnabled = (event.target as HTMLInputElement).checked;
+};
+element<HTMLInputElement>("cutaway-height").oninput = (event) => {
+  viewer.cutawayHeight = Number((event.target as HTMLInputElement).value);
+};
 element<HTMLInputElement>("depth").onchange = (event) => {
   viewer.worldDepth = (event.target as HTMLInputElement).checked;
 };
@@ -292,6 +298,7 @@ function refreshDestinations() {
 }
 function updateEnvironmentUI(asset?: WorldAsset) {
   const inspection = viewer.mode === "world";
+  for (const view of ["top", "side", "map"]) document.querySelector<HTMLButtonElement>(`[data-view="${view}"]`)!.disabled = inspection;
   const realistic = viewer.mode === "world-simulation";
   element("viewport").classList.toggle("inspection", inspection || realistic);
   element("simulation-controls").hidden = inspection;
@@ -342,6 +349,14 @@ function renderUI() {
   element<HTMLSelectElement>("playback-speed").value = String(simulation.playbackSpeed);
   element<HTMLSelectElement>("posture").value = simulation.posture;
   element<HTMLInputElement>("speed").value = String(simulation.profile.speed);
+  const top = viewer.view === "map";
+  const cutaway = viewer.mode === "world-simulation" && ["top", "side", "overview"].includes(viewer.view);
+  element("cutaway-controls").hidden = !cutaway;
+  element("cutaway-value").textContent = `${viewer.cutawayHeight.toFixed(1)} m`;
+  element("viewport").classList.toggle("cutaway-view", cutaway);
+  element("map-legend").hidden = !top;
+  element("viewport").classList.toggle("top-view", top);
+  element("scene-hint").textContent = top ? "Drag to pan · Scroll to zoom" : viewer.mode === "world" ? "Drag to look · Click a surface to place reference" : "Drag to orbit · Scroll to zoom";
   element("routine").textContent = routine.active ? "■ Stop walking routine" : "▶ Walk around";
   element("routine").setAttribute("aria-pressed", String(routine.active));
   element("elapsed").textContent = timestamp(simulation.time);

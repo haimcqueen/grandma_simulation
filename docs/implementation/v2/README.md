@@ -4,6 +4,8 @@
 
 Updated 2026-09-05. Implemented at the user's request: combine the realistic house with the v1-style walking simulation so the character teammate can extend a working scene.
 
+For the subsequent realistic camera and cutaway changes, read the [v2.1 handoff](../v2.1/README.md). The implementation remains in `environment-sim/v2/`.
+
 ## Unitree integration follow-up
 
 The user explicitly selected v2 as the working app. Use **http://127.0.0.1:5174/**. This address now serves the realistic app, replacing the v1 server previously there; another legacy app may still occupy localhost's IPv6 address.
@@ -43,13 +45,25 @@ Both splats and collider use X rotation 180°, scale 1.905 and translation `[0,1
 
 The 0.15 m navigation grid has 520 accepted cells for a 0.28 m radius and 1.7 m height. Three destinations were selected in its connected central/rear passage area. Routes are checked against grid cells and dynamic obstacle footprints. Low geometry within 0.12 m of the floor is treated as floor noise. This is not a complete-house accessibility model or a small-hazard detector.
 
-Rendering keeps the generated room in all camera modes, then writes collider depth before drawing the resident/props. The appearance and movement geometry agree approximately; the generated collider is imperfect. Baked furniture remains fixed. Some camera angles are blurrier or more distorted than the source-photo view.
+Rendering keeps the generated room in realistic camera modes (Map is a separate navigation diagram), then writes collider depth before drawing the resident/props. The appearance and movement geometry agree approximately; the generated collider is imperfect. Baked furniture remains fixed. Some camera angles are blurrier or more distorted than the source-photo view.
 
 ## Sharing and extending
 
 Run `npm ci && npm run dev` in `environment-sim/v2/`. Durable public runtime URLs work without Mint authentication. `npm run fetch-world` creates a local asset bundle; set `VITE_WORLD_MANIFEST_URL=/worlds/tantau-local.json` in `.env.local` to use it. The refreshed ZIP includes both assets and that setting, so teammates do not need Mint credentials.
 
 Scene helpers do not start their own loops. `loadWorld` returns splats, collider, depth, wire, surface queries and disposal. Keep one renderer/state owner when merging into another app. Exported scenario JSON includes the world manifest, active environment and simulation state. Surface anchors from the inspection page are not automatically walkable destinations.
+
+## Realistic cutaway views
+
+Top down, Overview and Side render the original RAD room with Spark SDF edits. A world-space height cut removes ceiling and upper surfaces. Overview/Side additionally check the camera-to-resident sightline against the collider, ignoring already-height-clipped surfaces and low furnishings. An obstructing near-side region is lowered to reveal the resident. The sightline updates with camera orbit, zoom and resident movement. The same regional cut is applied to the invisible depth occluder; physical navigation uses the original collider/grid.
+
+Reveal interior and wall height are user controls. Inside/Third person/First person disable both cuts and restore full-room occlusion. Map is the separate orthographic navigation diagram added earlier. View switching preserves movement state.
+
+These are regional cuts, not individual-wall semantics. Other baked surfaces can be trimmed in a cut region. Splats inferred from interior photographs can have soft, incomplete surfaces when viewed from outside or above. We retain real asset appearance rather than substituting a floor diagram for the realistic views.
+
+`world-loader.ts` owns the shared cut geometry and depth-shader uniforms. `viewer.ts` selects cameras and updates the sightline; no extra animation loop or generation job was added. [Spark editing documentation](https://sparkjs.dev/docs/splat-editing/) describes the SDF opacity mechanism; local behavior was checked against the installed 2.1.0 package.
+
+`npm run test:top` checks Map controls and state preservation; `npm run test:cutaway` checks actual-room camera modes, orbit/zoom, cut height, depth-plane alignment, toggle/restoration and mobile layout.
 
 ## Checks
 

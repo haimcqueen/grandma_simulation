@@ -17,6 +17,11 @@ export class Viewer {
   readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   readonly camera = new THREE.PerspectiveCamera(48, 1, 0.03, 100);
   readonly controls: OrbitControls;
+  readonly topCamera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 100);
+  readonly topControls: OrbitControls;
+  readonly topScene = new THREE.Scene();
+  get activeCamera() { return this.view === "map" ? this.topCamera : this.camera; }
+  private topSpan = 10;
   readonly scene = new THREE.Scene();
   readonly worldScene = new THREE.Scene();
   readonly overlayScene = new THREE.Scene();
@@ -35,9 +40,13 @@ export class Viewer {
   mode: "fixture" | "world" | "world-simulation" = "fixture";
   readonly navigationMap = new THREE.Group();
   animatedResident?: Awaited<ReturnType<typeof loadAnimatedResident | typeof loadRobotResident>>;
-  view: "overview" | "interior" | "follow" | "first" = "overview";
+  view: "overview" | "interior" | "follow" | "first" | "top" | "side" | "map" = "overview";
   debugVisible = false;
   worldDepth = true;
+  cutawayHeight = 1.8;
+  cutawayEnabled = true;
+  private cutawayKey = "";
+  private readonly roomBounds = new THREE.Box3();
   private revision = -1;
   private loadRevision = 0;
   private residentRevision = 0;
@@ -51,6 +60,7 @@ export class Viewer {
     public environment: Environment,
   ) {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    this.renderer.localClippingEnabled = true;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -61,6 +71,17 @@ export class Viewer {
       "House simulation. Drag to orbit and scroll to zoom.",
     );
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.topCamera.up.set(0, 0, -1);
+    this.topControls = new OrbitControls(this.topCamera, this.renderer.domElement);
+    this.topControls.enableRotate = false;
+    this.topControls.screenSpacePanning = true;
+    this.topControls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+    this.topControls.touches.ONE = THREE.TOUCH.PAN;
+    this.topControls.minZoom = 0.5;
+    this.topControls.maxZoom = 8;
+    this.topControls.enabled = false;
+    this.topScene.background = new THREE.Color("#edece5");
+    this.topScene.add(new THREE.HemisphereLight(0xfff9e8, 0x7b8b7a, 2.3));
     this.controls.enableDamping = true;
     this.controls.minDistance = 0.1;
     this.controls.maxDistance = 32;
@@ -141,6 +162,15 @@ export class Viewer {
     this.renderer.setSize(width, Math.max(height, 1));
     this.camera.aspect = width / Math.max(height, 1);
     this.camera.updateProjectionMatrix();
+    this.resizeTopCamera();
+  }
+  private resizeTopCamera() {
+    const aspect = this.camera.aspect;
+    this.topCamera.left = -this.topSpan * aspect / 2;
+    this.topCamera.right = this.topSpan * aspect / 2;
+    this.topCamera.top = this.topSpan / 2;
+    this.topCamera.bottom = -this.topSpan / 2;
+    this.topCamera.updateProjectionMatrix();
   }
   private refreshDestinationMarkers() {
     disposeMeshes(this.destinations);
@@ -156,13 +186,45 @@ export class Viewer {
     (this.mode === "world-simulation" ? this.overlayScene : this.scene).add(this.destinations);
   }
   setView(view: Viewer["view"]) {
+    if ((view === "map" || view === "top" || view === "side") && this.mode === "world") return;
     this.view = view;
-    this.controls.enabled = view !== "first";
+    this.controls.enabled = view !== "map" && view !== "first";
+    this.controls.enableRotate = view !== "top";
+    this.topControls.enabled = view === "map";
+    if (view === "map") {
+      this.attachSimulation(this.topScene);
+      if (this.mode === "world-simulation") this.topScene.add(this.navigationMap);
+      else { this.topScene.add(this.fixture.root); this.fixture.wallGroup.visible = false; }
+      const bounds = this.mode === "world-simulation"
+        ? new THREE.Box3().setFromObject(this.navigationMap)
+        : new THREE.Box3().setFromObject(this.fixture.root);
+      if (bounds.isEmpty()) bounds.setFromCenterAndSize(new THREE.Vector3(this.environment.floor.x, 0, this.environment.floor.z), new THREE.Vector3(this.environment.floor.width, 1, this.environment.floor.depth));
+      const center = bounds.getCenter(new THREE.Vector3());
+      const size = bounds.getSize(new THREE.Vector3());
+      this.topSpan = Math.max(size.z, size.x / this.camera.aspect, 3) * 1.35;
+      this.topCamera.zoom = 1;
+      this.topCamera.position.set(center.x, bounds.max.y + 25, center.z);
+      this.topControls.target.set(center.x, this.environment.floorY, center.z);
+      this.resizeTopCamera();
+      this.topControls.update();
+      return;
+    }
+    this.scene.add(this.fixture.root);
+    this.overlayScene.add(this.navigationMap);
+    if (this.mode === "fixture") this.attachSimulation(this.scene);
     if (this.mode === "world-simulation") {
       this.camera.fov = 65;
-      if (view === "overview") {
-        this.camera.position.set(0.1, 1.75, 1.8);
-        this.controls.target.set(0.9, 1, -1.5);
+      if (view === "overview" || view === "top" || view === "side") {
+        const center = this.roomBounds.getCenter(new THREE.Vector3());
+        const size = this.roomBounds.getSize(new THREE.Vector3());
+        const span = Math.max(size.x, size.z);
+        const framing = Math.max(1, 0.9 / this.camera.aspect);
+        this.camera.fov = 38;
+        this.controls.target.set(center.x, this.environment.floorY + 0.5, center.z);
+        const offset = view === "top" ? new THREE.Vector3(0, span * 1.55, 0.001)
+          : view === "side" ? new THREE.Vector3(span * 0.1, span * 0.42, span * 1.45)
+          : new THREE.Vector3(span * 0.85, span * 1.05, span * 1.05);
+        this.camera.position.copy(this.controls.target).add(offset.multiplyScalar(framing));
       } else {
         this.camera.position.set(0, 1.6, 1.4);
         this.controls.target.set(1, 1, -2);
@@ -174,8 +236,11 @@ export class Viewer {
       this.controls.target.fromArray(this.worldAsset!.camera.target);
     } else {
       this.camera.fov = 48;
-      this.fixture.wallGroup.visible = view !== "overview";
-      if (view === "overview") {
+      this.fixture.wallGroup.visible = view === "interior" || view === "follow" || view === "first";
+      if (view === "top") {
+        this.camera.position.set(4, 17, 4.501);
+        this.controls.target.set(4, 0, 4.5);
+      } else if (view === "overview" || view === "side") {
         this.camera.position.set(13, 14, -10);
         this.controls.target.set(4, 0, 4.4);
       } else {
@@ -256,17 +321,19 @@ export class Viewer {
       return false;
     }
     if (this.world) {
-      this.worldScene.remove(this.world.splats);
+      this.worldScene.remove(this.world.splats, this.world.cutaway);
       this.overlayScene.remove(this.world.depth, this.world.wire);
       this.world.dispose();
     }
     this.world = loaded;
+    this.roomBounds.setFromObject(loaded.collider);
+    this.cutawayKey = "";
     this.worldAsset = asset;
     if (!this.spark) {
       this.spark = new SparkRenderer({ renderer: this.renderer });
       this.worldScene.add(this.spark);
     }
-    this.worldScene.add(loaded.splats);
+    this.worldScene.add(loaded.splats, loaded.cutaway);
     this.overlayScene.add(loaded.depth, loaded.wire);
     this.mode = "world";
     this.attachSimulation(this.scene);
@@ -281,6 +348,30 @@ export class Viewer {
     return true;
   }
   update(simulation: Simulation) {
+    const cut = this.mode === "world-simulation" && this.cutawayEnabled &&
+      (this.view === "top" || this.view === "side" || this.view === "overview");
+    (this.worldScene.background as THREE.Color).set(cut ? "#edece5" : "#29372f");
+    const cutawayKey = `${cut}:${this.cutawayHeight}`;
+    if (this.world && cutawayKey !== this.cutawayKey) {
+      this.world.setCutaway(cut ? this.environment.floorY + this.cutawayHeight : null);
+      this.cutawayKey = cutawayKey;
+    }
+    if (this.world) {
+      // Probe the sightline to the resident after camera orbit/zoom. Ignore surfaces
+      // already removed by the ceiling cut, and low furniture below the viewing target.
+      const focus = new THREE.Vector3(simulation.position.x,
+        floorHeightAt(this.environment, simulation.position) + 1.05, simulation.position.z);
+      const sightline = focus.clone().sub(this.camera.position);
+      const ray = new THREE.Raycaster(this.camera.position, sightline.clone().normalize(), 0, Math.max(0, sightline.length() - 0.3));
+      const obstruction = cut && this.view !== "top"
+        ? ray.intersectObject(this.world.collider, true).find(hit => hit.point.y > this.environment.floorY + 1.0 && hit.point.y < this.environment.floorY + this.cutawayHeight)
+        : undefined;
+      const facing = this.camera.position.clone().sub(focus);
+      facing.y = 0;
+      facing.normalize();
+      const frontPoint = obstruction ? obstruction.point.clone().addScaledVector(facing, -0.25) : focus;
+      this.world.setFrontCut(obstruction ? facing : null, frontPoint, this.environment.floorY);
+    }
     this.resident.root.position.set(
       simulation.position.x,
       floorHeightAt(this.environment, simulation.position),
@@ -337,7 +428,9 @@ export class Viewer {
       }
     }
     this.debug.visible = this.debugVisible;
-    this.navigationMap.visible = this.mode === "world-simulation" && this.debugVisible;
+    this.navigationMap.visible = this.mode === "world-simulation" && (this.debugVisible || this.view === "map");
+    const cells = this.navigationMap.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> | undefined;
+    if (cells) cells.material.opacity = this.view === "map" ? 0.85 : 0.3;
     const points = [simulation.position, ...simulation.route];
     points.slice(0, 4096).forEach((point, index) => {
       this.routePositions[index * 3] = point.x;
@@ -385,11 +478,16 @@ export class Viewer {
       this.camera.position.lerp(desiredCamera, 0.08);
       this.controls.target.lerp(target, 0.08);
     }
-    if (this.view !== "first") this.controls.update();
-    if (this.mode === "fixture") {
+    if (this.view === "map") {
+      this.topControls.update();
+      this.renderer.autoClear = true;
+      this.renderer.render(this.topScene, this.topCamera);
+    } else if (this.mode === "fixture") {
+      if (this.view !== "first") this.controls.update();
       this.renderer.autoClear = true;
       this.renderer.render(this.scene, this.camera);
     } else if (this.world) {
+      if (this.view !== "first") this.controls.update();
       // The collider only writes depth after splat color is complete, so it cannot cut holes in the backdrop.
       this.renderer.autoClear = true;
       this.renderer.toneMapping = THREE.NoToneMapping;
@@ -408,6 +506,8 @@ export class Viewer {
     this.residentRevision++;
     this.resizeObserver.disconnect();
     this.controls.dispose();
+    this.topControls.dispose();
+    disposeMeshes(this.topScene);
     this.world?.dispose();
     this.animatedResident?.dispose();
     this.spark?.dispose();

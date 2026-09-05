@@ -557,3 +557,17 @@ footer {
 .source-note a { color: #3e6044; }
 .inspection .scene-heading h1 { font-size: 27px; margin: 8px 0; letter-spacing: -1px; }
 .inspection .scene-heading { top: 20px; left: 20px; }
+
+#map-legend { position: absolute; left: 24px; top: 100px; z-index: 2; font-size: 11px; line-height: 1.7; color: #486744; background: #f9faf3e8; padding: 10px 14px; border-radius: 8px; pointer-events: none; }
+.top-view .scene-heading { display: none; }
+.top-view .scene-footer > span { color: #486744; text-shadow: none; }
+@media (max-width: 700px) { #map-legend { top: 20px; left: 16px; right: 16px; font-size: 10px; } }
+
+#cutaway-controls { position: absolute; z-index: 3; left: 24px; top: 90px; padding: 12px 16px; border-radius: 12px; background: #f9faf3ed; color: #365d47; font-size: 11px; }
+#cutaway-controls label { display: flex; align-items: center; gap: 10px; }
+#cutaway-controls input[type="range"] { width: 100px; margin: 14px 0; }
+#cutaway-controls output { min-width: 32px; }
+.cutaway-view .scene-heading { display: none; }
+.cutaway-view .scene-footer > span { color: #365d47; text-shadow: none; }
+.view-controls { max-width: calc(100% - 32px); flex-wrap: wrap; justify-content: center; }
+@media (max-width: 700px) { .view-controls { left: 16px; right: 16px; } #cutaway-controls { top: 16px; left: 16px; } }

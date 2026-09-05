@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": [
+    "orthographic map",
+    "rotation locked, pan/zoom",
+    "blocked/recovered movement",
+    "pause state preserved across views",
+    "resident render ownership restored",
+    "mobile layout",
+    "fixture top view"
+  ],
+  "errors": []
+}

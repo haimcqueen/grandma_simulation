@@ -4,6 +4,8 @@
 
 The v1-style movement loop now runs **inside the photo-guided Tantau room**. The default page includes the team's articulated Unitree G1 robot, three connected destinations, automatic walking, a movable scenario cart, a passage barrier, pause/reset, camera views, geometry inspection and state export. Character artwork remains replaceable by the character teammate.
 
+See the [v2.1 handoff](../../docs/implementation/v2.1/README.md) for realistic camera/cutaway behavior, teammate merge guidance, checks and limitations. V2.1 is an update to this application, not a separate source folder.
+
 ## Run and view
 
 ```sh
@@ -33,6 +35,13 @@ The resident automatically visits the kitchen approach, rear passage and living 
 **Stairs remain unfinished in the realistic environment.** The loaded room and navigation have no connected staircase or upstairs. V1's staircase/balcony coordinates must not be copied into this asset. Reconstruct/register those parts, validate their collider and floor transition, then connect traversal. Until then, only the three ground-level fall demos are offered here.
 
 Inside and Overview keep the realistic room visible. Follow tracks the resident and tests camera clearance against the collider. Camera drag and zoom remain available. The collision/navigation overlay is for inspecting approximate geometry, not a visual hazard detector.
+
+**Top down**, **Overview** and **Side** render the actual World Labs room with reversible cutaways. Top down looks vertically down; Overview is an oblique dollhouse view; Side gives a lower exterior angle. Reveal interior hides the ceiling/upper surfaces above the wall-height slider. In Overview/Side, a camera-to-resident sightline also reveals obstructing near-side regions and is recomputed as the camera or resident moves, including orbit and zoom. Inside, Third person and First person restore the full room.
+
+These are geometric cuts through splats, not semantic recognition of individual walls. The near-side cut can trim other baked surfaces in the same region; generated edges and unseen surfaces may look incomplete. The original collider/navigation remain unchanged for movement, while the visual depth occluder gets matching cuts. The slider and toggle provide manual control if the automatic reveal is too broad.
+
+**Map** keeps the separate orthographic navigation diagram: green cells, resident, destination rings, route and dynamic obstacles. Drag pans and scroll zooms; blank regions are blocked or unverified, not a surveyed floor plan. Changing views preserves the simulation.
+
 
 ## Assets
 
@@ -86,6 +95,8 @@ npm run build
 npm test
 # With the dev server running:
 npm run test:combined
+npm run test:top
+npm run test:cutaway
 npm run test:tantau
 # Also download the optional sample for these:
 npm run test:browser

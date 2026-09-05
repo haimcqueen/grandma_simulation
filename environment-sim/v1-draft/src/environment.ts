@@ -10,6 +10,7 @@ export type HouseObject = Rectangle & {
 export type Scenario = "clear" | "cart" | "blocked";
 export const radius = 0.28;
 export const spawn: Point = { x: 5.7, z: 9.4 };
+export const patioFallZone: Rectangle = { x: 7.8, z: 5.8, width: 1.8, depth: 1.2 };
 export const destinations = [
   {
     id: "living",

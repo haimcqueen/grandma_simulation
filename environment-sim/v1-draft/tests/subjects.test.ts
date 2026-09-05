@@ -11,9 +11,10 @@ function recorder() {
 
 test("every subject names an asset that exists and a coherent gait", () => {
   for (const s of SUBJECTS) {
-    assert.ok(["g1", "h1", "go2"].includes(s.asset), `${s.id} asset`);
+    assert.ok(["g1", "h1", "go2", "grandmother"].includes(s.asset), `${s.id} asset`);
     if (s.locomotion === "quadruped") assert.ok(s.crawl, `${s.id} needs a crawl style`);
-    else assert.ok(s.stance, `${s.id} needs a stance`);
+    else if (s.locomotion === "biped") assert.ok(s.stance, `${s.id} needs a stance`);
+    else assert.equal(s.asset, "grandmother", "the unrigged figurine needs no robot joints");
     assert.ok(s.speedMps > 0 && s.speedMps < 3, `${s.id} speed`);
     assert.ok(s.note.length > 20, `${s.id} must state where its numbers came from`);
   }
@@ -49,7 +50,7 @@ test("infant reach envelope excludes the worktop and includes the floor", () => 
 });
 
 test("swapping subject changes speed, not just the mesh", () => {
-  const speeds = SUBJECTS.map((s) => s.speedMps);
+  const speeds = SUBJECTS.filter((s) => s.locomotion !== "rigid").map((s) => s.speedMps);
   assert.equal(new Set(speeds).size, speeds.length, "each subject moves differently");
   assert.ok(subjectById("baby").speedMps < subjectById("grandma").speedMps);
 });

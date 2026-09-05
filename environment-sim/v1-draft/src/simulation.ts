@@ -4,6 +4,8 @@ import {
   scenarioObjects,
   spawn,
   isWalkable,
+  contains,
+  patioFallZone,
   type Point,
   type DestinationId,
   type Scenario,
@@ -11,6 +13,7 @@ import {
 import { planRoute, segmentClear } from "./navigation";
 import { angleDifference, approach } from "./robot/motion";
 import { SUBJECTS, type Subject } from "./robot/subjects";
+import { FALL_DURATION } from "./robot/fall";
 export type SimulationEvent = {
   time: number;
   type: string;
@@ -23,7 +26,11 @@ export class Simulation {
   route: Point[] = [];
   destination: DestinationId | null = null;
   scenario: Scenario = "clear";
-  status: "idle" | "walking" | "arrived" | "blocked" = "idle";
+  status: "idle" | "walking" | "arrived" | "blocked" | "falling" | "fallen" = "idle";
+  patioFallEnabled = false;
+  fallProgress = 0;
+  fallStartedAt = 0;
+  get isFalling() { return this.status === "falling" || this.status === "fallen"; }
   paused = false;
   subject = SUBJECTS[0];
   speed = this.subject.speedMps;
@@ -44,11 +51,27 @@ export class Simulation {
     this.record("ready", "Resident ready in the living room.", ["resident-01"]);
   }
   setSubject(subject: Subject) {
+    if (this.isFalling) this.reset();
     this.subject = subject;
     this.speed = subject.speedMps;
     this.currentSpeed = 0;
     this.gaitPhase = 0;
     this.gaitBlend = 0;
+  }
+  setPatioFall(enabled: boolean) {
+    this.patioFallEnabled = enabled;
+  }
+  private checkPatioFall(travel: number) {
+    if (!this.patioFallEnabled || this.subject.locomotion !== "biped" || travel <= 0 ||
+      !contains(this.position, patioFallZone)) return false;
+    this.status = "falling";
+    this.fallProgress = 0;
+    this.fallStartedAt = this.time;
+    this.currentSpeed = 0;
+    this.route = [];
+    this.record("fallStarted", "Patio fall demo: robot stumbles. This is an authored animation.",
+      ["resident-01", "patio-fall-zone"]);
+    return true;
   }
   private animateMotion(travel: number, turn: number, delta: number) {
     this.gaitPhase += (travel + Math.abs(turn) * 0.12) / this.subject.motion.strideLength;
@@ -66,12 +89,14 @@ export class Simulation {
     this.events = this.events.slice(0, 30);
   }
   requestDestination(id: DestinationId) {
+    if (this.isFalling) return;
     if (this.manual) this.setManual(false);
     this.destination = id;
     this.replan(false);
   }
 
   setManual(on: boolean) {
+    if (this.isFalling) return;
     if (this.manual === on) return;
     this.manual = on;
     this.currentSpeed = 0;
@@ -93,7 +118,7 @@ export class Simulation {
    * manual control cannot walk through walls the router respects.
    */
   drive(forward: number, turn: number, delta: number) {
-    if (!this.manual || this.paused || !Number.isFinite(delta) || delta <= 0) return;
+    if (!this.manual || this.paused || this.isFalling || !Number.isFinite(delta) || delta <= 0) return;
     if (!Number.isFinite(forward) || !Number.isFinite(turn)) return;
     forward = Math.max(-1, Math.min(1, forward));
     turn = Math.max(-1, Math.min(1, turn));
@@ -117,6 +142,7 @@ export class Simulation {
       this.distance += actual;
       this.animateMotion(actual * Math.sign(travel), rotation, step);
       this.status = actual > 0.000001 || Math.abs(rotation) > 0.000001 ? "walking" : "idle";
+      if (this.checkPatioFall(actual)) return;
     }
   }
   private replan(changed: boolean) {
@@ -164,7 +190,7 @@ export class Simulation {
           : "A barrier closes the passage.",
       ["passage-obstruction"],
     );
-    if (this.destination && this.status !== "arrived") this.replan(true);
+    if (this.destination && this.status !== "arrived" && !this.isFalling) this.replan(true);
     return true;
   }
   advance(delta: number) {
@@ -173,7 +199,14 @@ export class Simulation {
       const step = Math.min(remaining, 1 / 60);
       remaining -= step;
       this.time += step;
-      if (!this.manual) this.walkStep(step);
+      if (this.status === "falling") {
+        this.fallProgress = Math.min(1, this.fallProgress + step / FALL_DURATION);
+        if (this.fallProgress >= 1) {
+          this.status = "fallen";
+          this.record("fallCompleted", "Robot is down. Reset resident to stand up and try again.",
+            ["resident-01", "patio-fall-zone"]);
+        }
+      } else if (!this.manual && !this.isFalling) this.walkStep(step);
     }
   }
   private walkStep(delta: number) {
@@ -202,6 +235,7 @@ export class Simulation {
       };
       this.distance += travel;
       this.animateMotion(travel, rotation, delta);
+      if (this.checkPatioFall(travel)) return;
       if (travel === length) {
         this.route.shift();
         this.currentSpeed = 0;
@@ -223,6 +257,8 @@ export class Simulation {
     this.route = [];
     this.destination = null;
     this.status = "idle";
+    this.fallProgress = 0;
+    this.fallStartedAt = 0;
     this.paused = false;
     this.manual = false;
     this.time = 0;

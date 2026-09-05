@@ -5,6 +5,7 @@ import {
   floors,
   objects,
   scenarioObjects,
+  patioFallZone,
   type HouseObject,
 } from "./environment";
 import type { Simulation } from "./simulation";
@@ -15,6 +16,7 @@ import { crawl } from "./robot/crawl";
 import { SUBJECTS, subjectById, type Subject } from "./robot/subjects";
 import { LIVERIES } from "./robot/livery";
 import { loadFigurine } from "./robot/figurine";
+import { poseFall } from "./robot/fall";
 
 export function createHouseScene(
   container: HTMLElement,
@@ -318,10 +320,22 @@ export function createHouseScene(
   const resident = new THREE.Group();
   scene.add(resident);
   const figurine = new THREE.Group();
-  figurine.position.set(4.95, 0, 9.4);
+  figurine.position.set(6.6, 0, 9.9);
   scene.add(figurine);
+  const fallZone = new THREE.Mesh(
+    new THREE.PlaneGeometry(patioFallZone.width, patioFallZone.depth),
+    new THREE.MeshBasicMaterial({ color: 0xd89942, transparent: true, opacity: 0.3, depthWrite: false }),
+  );
+  fallZone.rotation.x = -Math.PI / 2;
+  fallZone.position.set(patioFallZone.x, 0.04, patioFallZone.z);
+  fallZone.visible = false;
+  scene.add(fallZone);
+  let figurineModel: THREE.Group | null = null;
+  let showFigurineReference = true;
   const figurineReady = loadFigurine().then(model => {
+    figurineModel = model;
     figurine.add(model);
+    return model;
   });
   // Placeholder resident replaced with a baked Unitree GLB. The `resident`
   // group contract is unchanged: simulation still owns position and heading.
@@ -335,6 +349,16 @@ export function createHouseScene(
   async function setSubject(id: string) {
     const request = ++subjectRequest;
     const next = subjectById(id);
+    if (next.locomotion === "rigid") {
+      const model = await figurineReady;
+      if (request !== subjectRequest) return null;
+      if (robot) resident.remove(robot.root);
+      robot = null;
+      resident.add(model);
+      figurine.visible = false;
+      subject = next;
+      return next;
+    }
     let loaded = cache.get(next.asset);
     if (!loaded) {
       loaded = await new Robot().load(
@@ -344,6 +368,8 @@ export function createHouseScene(
       cache.set(next.asset, loaded);
     }
     if (request !== subjectRequest) return null;
+    if (figurineModel) figurine.add(figurineModel);
+    figurine.visible = showFigurineReference;
     if (robot && robot !== loaded) resident.remove(robot.root);
     subject = next;
     robot = loaded;
@@ -407,8 +433,16 @@ export function createHouseScene(
   function update(simulation: Simulation) {
     resident.position.set(simulation.position.x, 0, simulation.position.z);
     resident.rotation.y = simulation.heading;
+    fallZone.visible = simulation.patioFallEnabled;
     if (robot) {
-      if (subject.locomotion === "quadruped" && subject.crawl) {
+      robot.root.rotation.x = 0;
+      if (simulation.isFalling) {
+        const stance = lerpStance(UPRIGHT, subject.stance ?? UPRIGHT, hunch);
+        const { pitch, roll } = poseFall(robot, stance, simulation.gaitPhase,
+          simulation.fallStartedAt, subject.motion, simulation.gaitBlend, simulation.fallProgress);
+        robot.root.rotation.set(pitch, 0, roll);
+        robot.settleOnGround();
+      } else if (subject.locomotion === "quadruped" && subject.crawl) {
         const { bob, roll } = crawl(
           robot,
           subject.crawl,
@@ -473,7 +507,7 @@ export function createHouseScene(
     );
     controls.update();
     renderer.render(scene, camera);
-    updateFollow(simulation, robot?.height ?? 1.3);
+    updateFollow(simulation, robot?.height ?? (subject.locomotion === "rigid" ? 1.55 : 1.3));
   }
   const raycaster = new THREE.Raycaster();
   let down = { x: 0, y: 0 };
@@ -513,7 +547,10 @@ export function createHouseScene(
     setSubject,
     subjects: SUBJECTS,
     figurineReady,
-    setFigurineVisible: (visible: boolean) => { figurine.visible = visible; },
+    setFigurineVisible: (visible: boolean) => {
+      showFigurineReference = visible;
+      figurine.visible = visible && subject.locomotion !== "rigid";
+    },
     setSkin: (id: string) => robot?.setSkin(id),
     liveries: LIVERIES,
     setDebug: (value: boolean) => (debugGroup.visible = value),

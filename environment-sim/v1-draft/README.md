@@ -31,7 +31,23 @@ Changes work during movement. An obstruction placement is rejected if it would o
 - `src/scene.ts`: Three.js presentation and destination picking. Character forward is +Z; heading rotates around Y. Walls are cut down to show the interior. No splat loader is integrated.
 - `src/main.ts`: controls and one fixed-step 60 Hz simulation loop, with rendering at display rate. Long frame delays are clamped; background time is not replayed.
 
-The placeholder resident's speed defaults to 0.9 m/s and can be changed. Mobility is not inferred from age or appearance. Known obstacles are always available to the planner. The prototype evaluates a manually configured route obstruction; it does not automatically identify hazards or predict falls.
+The resident starts with the cautious older-adult preset at 0.77 m/s. Use **Character** or keys **1–6** to select the older adult robot, adult, crawling infant, toddler, dog, or grandma figurine. Arrow keys / WASD steer directly; choosing a destination returns to route following. The speed slider overrides the preset's target speed. Mobility is not inferred from appearance. Known obstacles are always available to the planner. The prototype evaluates manually configured scenarios; it does not automatically identify hazards or predict falls.
+
+## Character movement and grandma figurine
+
+`src/robot/motion.ts` contains authored movement parameters: acceleration and braking in m/s², turn rate in rad/s, distance per full left/right gait cycle in metres, stance-time fraction, knee lift, and arm swing. The cautious preset uses shorter steps, longer time with both feet supporting the body, lower foot lift, and smaller arm swings. These are tunable demonstration values, not fitted human motion data or a rule about older people.
+
+The simulation ramps speed, brakes at route waypoints, turns before continuing, and backs up more slowly. Actual travel drives the gait phase; turning in place also produces steps. Stopping blends the limbs into their resting posture, and pause freezes the pose as well as the position. Manual collisions stop movement and gait travel. Navigation still uses the prototype's shared 0.28 m clearance; the subject metadata's clearance and reach values are not a body collision model.
+
+The supplied `public/robot/grandmother.glb` has its original materials and an illustrative height of 1.55 m. Select **GRANDMA FIGURINE** or press **6** to control it with the same keys, routes, pause, reset, and follow camera as the robots. Its unrigged body moves and turns as one piece; no limb animation is applied. When a robot is selected, the figurine returns to a togglable reference position beside the start. The reference is not a navigation obstacle. The supplied Tripo export is approximately 59 MB, contains one mesh, and has no skin, skeleton, or animation clips.
+
+For a human character that walks convincingly, the next asset step is to rig and skin that mesh, then author or retarget walking, idle, start/stop, and turning clips. Those clips can be blended using the simulation's actual speed and heading, with foot-contact IK for planted feet. The current procedural robot gait has no foot-locking IK or balance physics; distance-linked phase and ground settling alone do not eliminate sliding. A static figurine cannot reproduce articulated walking until its limbs are rigged.
+
+## Patio fall demo
+
+Select a biped robot (keys **1**, **2**, or **4**), enable **Patio fall demo**, and choose **Patio** or steer into the amber patch. Entering the patch while moving triggers a 1.6-second authored stumble, bracing motion, and forward fall. The robot stays down and ignores drive/destination commands until **Reset resident**. Pause freezes the fall; changing passage obstacles does not cancel it. Reset preserves the demo setting, while selecting another character also resets a fallen robot.
+
+The patch and trigger are explicit scenario choices, not a surface-friction simulation or a prediction of fall risk. The animation uses joint posing and ground settling, without ragdoll physics or full-body collision. The unrigged figurine and quadrupeds do not use the biped fall animation.
 
 ## Source and accuracy
 

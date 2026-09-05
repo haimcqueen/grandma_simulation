@@ -13,7 +13,7 @@ export interface Subject {
   id: string
   label: string
   asset: string                       // basename under /robot/
-  locomotion: 'biped' | 'quadruped'
+  locomotion: 'biped' | 'quadruped' | 'rigid'
   stance?: Stance
   crawl?: CrawlStyle
   speedMps: number
@@ -63,6 +63,14 @@ export const SUBJECTS: Subject[] = [
     speedMps: 1.10, clearanceM: 0.24, reachM: 0.55,
     motion: DOG_MOTION,
     note: 'Pets are a documented fall hazard in the homes of older adults.',
+  },
+  {
+    id: 'grandma-figurine', label: 'GRANDMA FIGURINE', asset: 'grandmother',
+    locomotion: 'rigid',
+    speedMps: 0.77, clearanceM: 0.34, reachM: 1.55,
+    motion: CAUTIOUS,
+    note: 'Your imported grandma, controllable with the cautious movement preset. '
+        + 'The unrigged body moves and turns as one piece; limbs are not animated.',
   },
 ]
 

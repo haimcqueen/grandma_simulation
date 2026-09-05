@@ -21,7 +21,8 @@ app.innerHTML = `
       <section class="control-section"><h3><span>01</span> Choose a destination</h3><div class="destinations">${destinations.map((destination, index) => `<button data-destination="${destination.id}"><span class="destination-number">0${index + 1}</span><span><strong>${destination.label}</strong><small>${destination.description}</small></span><span class="arrow">↗</span></button>`).join("")}</div></section>
       <section class="control-section"><h3><span>02</span> Change the passage</h3><div class="segmented" aria-label="Passage scenario"><button data-scenario="clear" class="active" aria-pressed="true">Clear</button><button data-scenario="cart" aria-pressed="false">Add cart</button><button data-scenario="blocked" aria-pressed="false">Block route</button></div><p id="scenario-description" class="hint">A clear passage beside the kitchen island.</p></section>
       <section class="control-section resident-section"><h3><span>03</span> Observe the journey</h3><div class="resident-status"><div class="avatar">R</div><div><strong>Resident 01</strong><small id="status" role="status">Ready to explore</small></div><span id="status-dot" class="status-dot"></span></div><label class="speed-label" for="speed">Walking speed <output id="speed-value">0.9 m/s</output></label><input id="speed" type="range" min="0.4" max="1.6" step="0.1" value="0.9"><div class="metrics"><div><strong id="elapsed">00:00</strong><small>SIMULATION TIME</small></div><div><strong id="distance">0.0 <em>m</em></strong><small>DISTANCE WALKED</small></div></div><div class="playback"><button id="pause">Ⅱ Pause</button><button id="reset">↺ Reset resident</button></div></section>
-      <section class="control-section"><label class="speed-label" for="subject">Movement profile</label><select id="subject">${SUBJECTS.map(subject => `<option value="${subject.id}">${subject.label}</option>`).join("")}</select><p id="motion-note" class="hint"></p><label class="figurine-label"><input id="figurine" type="checkbox" checked> Show grandma figurine beside the start</label><p id="figurine-status" class="hint" role="status">Loading grandma figurine…</p></section>
+      <section class="control-section"><label class="speed-label" for="subject">Character</label><select id="subject">${SUBJECTS.map(subject => `<option value="${subject.id}">${subject.label}</option>`).join("")}</select><p id="motion-note" class="hint"></p><label class="figurine-label"><input id="figurine" type="checkbox" checked> Show grandma beside the start when controlling a robot</label><p id="figurine-status" class="hint" role="status">Loading grandma figurine…</p></section>
+      <section class="control-section"><label class="figurine-label"><input id="patio-fall" type="checkbox"> Patio fall demo</label><p class="hint">Choose a walking robot, enable this demo, then select Patio. The amber patch triggers a staged stumble and fall. Reset resident to stand up. This animation does not predict real falls.</p></section>
       <section class="event-section"><div class="event-title"><h3>Observations</h3><span>LIVE</span></div><ol id="events" aria-live="polite" aria-relevant="additions"></ol></section>
       <details><summary>About this experiment</summary><p>Floor-plan-inspired geometry with illustrative furniture. The resident is fictional; speed and clearance are explicit scenario settings, not inferred from age. Obstacles are manually placed. Events describe route availability, not fall risk.</p><p>Reset preserves the selected scenario and speed. Amber outlines show the 0.28 m clearance used by navigation.</p><label><input id="debug" type="checkbox"> Show navigation clearance</label><label><input id="labels" type="checkbox" checked> Show room labels</label><a href="https://ssl.cdn-redfin.com/photo/8/bigphoto/142/ML82056142_42_1.jpg" target="_blank" rel="noreferrer">Source floor plan ↗</a></details>
     </aside>
@@ -45,10 +46,12 @@ try {
 const speedInput = element<HTMLInputElement>("speed");
 speedInput.min = "0.1";
 speedInput.step = "0.01";
+element<HTMLInputElement>("patio-fall").onchange = event =>
+  simulation.setPatioFall((event.target as HTMLInputElement).checked);
 element<HTMLInputElement>("figurine").onchange = event =>
   view.setFigurineVisible((event.target as HTMLInputElement).checked);
 void view.figurineReady.then(() => {
-  element("figurine-status").textContent = "Your figurine · Static visual reference · Display height 1.55 m. A skeleton and walking animation are needed to animate its limbs.";
+  element("figurine-status").textContent = "Your figurine is ready. Select GRANDMA FIGURINE or press 6 to control her. Her body moves as one piece; limbs are not animated yet.";
 }).catch(error => {
   element("figurine-status").textContent = "Grandma figurine could not load. Robot controls are still available.";
   console.error("[figurine] load failed", error);
@@ -65,7 +68,11 @@ async function selectSubject(id: string) {
   }
 }
 element<HTMLSelectElement>("subject").onchange = event =>
-  void selectSubject((event.target as HTMLSelectElement).value);
+  {
+    const select = event.target as HTMLSelectElement;
+    void selectSubject(select.value);
+    select.blur();
+  };
 for (const button of document.querySelectorAll<HTMLButtonElement>(
   "[data-destination]",
 ))
@@ -113,7 +120,10 @@ function renderInterface() {
   speedInput.value = String(simulation.speed);
   element("speed-value").textContent = `${simulation.speed.toFixed(2)} m/s`;
   element<HTMLSelectElement>("subject").value = simulation.subject.id;
-  element("motion-note").textContent = `${simulation.subject.motion.strideLength.toFixed(2)} m per gait cycle · Tunable movement preset. Keys 1–5 switch characters; arrows or WASD steer.`;
+  element("motion-note").textContent = simulation.subject.locomotion === "rigid"
+    ? "Controlling your grandma figurine. Arrows or WASD move and turn; destination buttons guide her through the house. F follows her."
+    : `${simulation.subject.motion.strideLength.toFixed(2)} m per gait cycle · Tunable movement preset. Keys 1–6 switch characters; arrows or WASD steer.`;
+  element<HTMLInputElement>("figurine").disabled = simulation.subject.locomotion === "rigid";
   const target = destinations
     .find((destination) => destination.id === simulation.destination)
     ?.label.toLowerCase();
@@ -124,6 +134,8 @@ function renderInterface() {
         walking: simulation.manual ? "Manual movement" : `Walking to ${target}`,
         arrived: `Arrived · ${target}`,
         blocked: "Route blocked",
+        falling: "Stumbling · Patio fall demo",
+        fallen: "Robot down · Reset to stand up",
       }[simulation.status];
   element("status-dot").className = `status-dot ${simulation.status}`;
   element("elapsed").textContent = timestamp(simulation.time);
@@ -180,8 +192,8 @@ const DRIVE_KEYS = new Set([
   "arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d",
 ]);
 
-// Subject swap (1-5), follow camera (F), zoom (+/-).
-const SUBJECT_KEYS = ["1", "2", "3", "4", "5"];
+// Subject swap (1-6), follow camera (F), zoom (+/-).
+const SUBJECT_KEYS = ["1", "2", "3", "4", "5", "6"];
 window.addEventListener("keydown", (event) => {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
   const key = event.key.toLowerCase();

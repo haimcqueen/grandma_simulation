@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+import { chromium } from '@playwright/test';
+import { mkdir, writeFile } from 'node:fs/promises';
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:950},acceptDownloads:true});
+const errors=[];page.on('pageerror',error=>errors.push(error.message));
+const ready=()=>page.waitForFunction(()=>window.houseLab?.viewer.mode==='world-simulation',{}, {timeout:60000});
+try {
+ await mkdir(".artifacts", { recursive: true });
+ await page.goto(process.env.BASE_URL || 'http://localhost:5174/');await ready();
+ await page.waitForFunction(()=>window.houseLab.simulation.distance>.6);
+ assert.equal(await page.evaluate(()=>window.houseLab.routine.active),true);
+ await page.locator('#pause').click();
+ const paused=await page.evaluate(()=>window.houseLab.simulation.snapshot());
+ await page.waitForTimeout(300);assert.deepEqual(await page.evaluate(()=>window.houseLab.simulation.snapshot()),paused);
+ await page.screenshot({path:'.artifacts/combined-walking.png'});
+ await page.locator('#reset').click();
+ await page.locator('[data-scenario="cart"]').click();
+ await page.locator('[data-destination="kitchen"]').click();
+ await page.waitForFunction(()=>window.houseLab.simulation.status==='arrived',{}, {timeout:15000});
+ const cartDistance=await page.evaluate(()=>window.houseLab.simulation.distance);assert.ok(cartDistance>3);
+ await page.screenshot({path:'.artifacts/combined-arrival.png'});
+ await page.locator('#reset').click();await page.locator('[data-scenario="blocked"]').click();
+ await page.locator('[data-destination="kitchen"]').click();
+ assert.equal(await page.evaluate(()=>window.houseLab.simulation.status),'blocked');
+ await page.screenshot({path:'.artifacts/combined-blocked.png'});
+ await page.locator('[data-scenario="clear"]').click();
+ await page.waitForFunction(()=>window.houseLab.simulation.status==='walking');
+ await page.locator('[data-view="follow"]').click();await page.waitForTimeout(800);
+ await page.screenshot({path:'.artifacts/combined-follow.png'});
+ await page.locator('#reset').click();await page.locator('[data-view="interior"]').click();await page.locator('#pause').click();
+ await page.locator('#debug').check();await page.screenshot({path:'.artifacts/combined-geometry.png'});await page.locator('#debug').uncheck();
+ const download=page.waitForEvent('download');await page.locator('#export').click();
+ assert.equal((await download).suggestedFilename(),'house-lab-scenario.json');
+ // Inspect the actual room's depth pass with a static resident beyond the cabinet wall.
+ await page.evaluate(()=>{
+  const {viewer:v,simulation:s}=window.houseLab;
+  v.controls.enableDamping=false;v.camera.position.set(0,1.5,0);v.controls.target.set(0,1,-4);v.controls.update();
+  s.position={x:0,z:-9};v.destinations.visible=false;v.resident.root.visible=false;
+ });
+ await page.waitForTimeout(800);const baseline=await page.locator('canvas').screenshot();
+ await page.evaluate(()=>window.houseLab.viewer.resident.root.visible=true);
+ await page.waitForTimeout(300);const occluded=await page.locator('canvas').screenshot();
+ await writeFile('.artifacts/occlusion-baseline.png',baseline);
+ await writeFile('.artifacts/occlusion-resident.png',occluded);
+ assert.ok(occluded.equals(baseline),'Actual room wall must occlude resident');
+ await page.evaluate(()=>window.houseLab.viewer.worldDepth=false);await page.waitForTimeout(300);
+ assert.ok(!(await page.locator('canvas').screenshot()).equals(baseline),'Resident would be visible without room depth');
+ await page.evaluate(()=>{window.houseLab.viewer.worldDepth=true;window.houseLab.viewer.destinations.visible=true;});
+ await page.locator('#reset').click();await page.locator('[data-view="interior"]').click();
+ await page.locator('#environment').selectOption('fixture');assert.equal(await page.evaluate(()=>window.houseLab.viewer.mode),'fixture');
+ await page.locator('#environment').selectOption('generated');await ready();
+ assert.equal(await page.evaluate(()=>window.houseLab.viewer.overlayScene.children.filter(o=>o.name==='resident-01').length),2); // resident + hidden inspection marker
+ await page.setViewportSize({width:390,height:844});await page.waitForTimeout(300);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.screenshot({path:'.artifacts/combined-mobile.png',fullPage:true});
+ await page.locator('#environment').selectOption('fixture');
+ await page.route('**/environment/tantau-navigation.json',route=>route.fulfill({status:404,body:'missing'}));
+ await page.locator('#environment').selectOption('generated');
+ await page.waitForFunction(()=>document.querySelector('#notice').textContent.includes('navigation data is unavailable'));
+ assert.equal(await page.evaluate(()=>window.houseLab.viewer.mode),'fixture');
+ assert.deepEqual(errors,[]);
+ const result={passed:true,date:'2026-09-05',cartDistance,errors,checks:['default realistic world + automatic walking','destination arrival','cart detour','barrier and recovery','pause/reset','follow camera','geometry overlay','state export','actual-world occlusion','switching environments','mobile layout','missing navigation recovery']};
+ await writeFile('.artifacts/combined-validation.json',JSON.stringify(result,null,2));console.log(result);
+} finally {await browser.close();}

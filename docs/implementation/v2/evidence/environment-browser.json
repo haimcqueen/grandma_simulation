@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "errors": [],
+  "checks": [
+    "sample assets",
+    "collider toggle",
+    "grid toggle",
+    "surface anchors",
+    "record export",
+    "camera presets",
+    "mobile overflow"
+  ]
+}

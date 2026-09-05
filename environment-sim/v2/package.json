@@ -1,0 +1,30 @@
+{
+  "name": "house-lab-v2",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5174",
+    "build": "tsc --noEmit && vite build",
+    "fetch-sample": "node scripts/fetch-sample.mjs",
+    "probe": "node scripts/probe.mjs",
+    "test": "tsx --test scripts/test-simulation.mjs",
+    "test:browser": "node scripts/test-browser.mjs",
+    "test:environment": "node scripts/test-environment.mjs",
+    "fetch-world": "node scripts/fetch-world.mjs",
+    "test:tantau": "node scripts/test-tantau.mjs",
+    "test:combined": "node scripts/test-combined.mjs"
+  },
+  "dependencies": {
+    "@sparkjsdev/spark": "2.1.0",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/three": "0.185.4",
+    "three-mesh-bvh": "0.9.14",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2",
+    "vite": "8.2.2"
+  }
+}

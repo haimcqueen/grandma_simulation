@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "cartDistance": 10.106200213318045,
+  "errors": [],
+  "checks": [
+    "arrival",
+    "active replan",
+    "barrier",
+    "pause",
+    "reset",
+    "world loading",
+    "depth preserves backdrop",
+    "resident occluded behind wall",
+    "mobile overflow",
+    "missing asset recovery"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-05",
+  "provider": "Mint MCP / World Labs environment workflow",
+  "projectId": "zd7498qa69ch5fmxd2fp9jf8fd8dvn9q",
+  "assetId": "j970ssrpqj1mzrw3zyg24m0kjd8dvgdk",
+  "chatUrl": "https://mint.gg/chat/ph76aa258at54gvzs8ytwm5je18dtcpx",
+  "mode": "review",
+  "observedStatus": "succeeded",
+  "workflowStage": "complete",
+  "finalGenerationApproved": true,
+  "finalGenerationStarted": true,
+  "sourcePage": "https://www.zillow.com/homedetails/10536-S-Tantau-Ave-Cupertino-CA-95014/19644938_zpid/",
+  "sourceImages": [
+    "https://photos.zillowstatic.com/fp/c547a9463a5bdb6987a2d29381aae429-cc_ft_576.jpg",
+    "https://photos.zillowstatic.com/fp/5606d90947715b1c6c8afd31465618eb-cc_ft_576.jpg"
+  ],
+  "prompt": "A coherent realistic ground-floor main living room connected to the kitchen and dining area, guided by these two photographs of the same contemporary Cupertino house. Preserve the pale oak plank flooring, warm white walls, tall recessed-light ceiling, cream curved sofa and lounge chairs, low white coffee table, black fireplace, broad black-framed sliding glass doors opening to the patio, walnut kitchen cabinetry and white quartz waterfall island. Camera at standing eye height in the open living room looking toward the kitchen, with living seating and patio doors remaining recognizable. Maintain continuous open walking space connecting the living room and kitchen around the island. Only this connected main great room; no upstairs, separate ADU, additional bedrooms or invented corridors. No people. Do not add a storage cart or hazard props; these will be separate interactive objects. Photorealistic daylight, faithful materials, coherent furniture and clear floor. This is a photo-guided approximation, not a dimensionally accurate survey.",
+  "model": "Not exposed by the Mint MCP start-world schema",
+  "observedCost": null,
+  "metricScale": {
+    "value": 1.905,
+    "status": "estimated",
+    "basis": "Listing 10 ft ceiling divided by 1.6 source-unit floor/ceiling separation"
+  },
+  "runtimeManifest": "runtime-manifest.json",
+  "notes": "Final RAD and GLB retrieved via MCP. Both require X rotation 180 degrees. The main environment viewer loads the actual room. Unseen regions are generated and dimensions are approximate; no character export is required."
+}

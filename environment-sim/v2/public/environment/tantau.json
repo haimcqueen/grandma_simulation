@@ -1,0 +1,48 @@
+{
+  "id": "tantau-great-room",
+  "label": "Tantau great room",
+  "source": "Photo-guided World Labs generation \u00b7 approximate listing interior",
+  "splatUrl": "https://cdn.mint.gg/rad/cupertino-great-room-75d102ed1ec65cbc-lod.rad",
+  "colliderUrl": "https://cdn.mint.gg/worlds/cupertino-great-room-collider-f2bc2c892005c3d9.glb",
+  "splatTransform": {
+    "position": [
+      0,
+      1.2954,
+      0
+    ],
+    "quaternion": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "scale": 1.905
+  },
+  "colliderTransform": {
+    "position": [
+      0,
+      1.2954,
+      0
+    ],
+    "quaternion": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "scale": 1.905
+  },
+  "metricStatus": "unverified",
+  "camera": {
+    "position": [
+      0,
+      1.5,
+      0
+    ],
+    "target": [
+      0,
+      1.2,
+      -3
+    ]
+  }
+}

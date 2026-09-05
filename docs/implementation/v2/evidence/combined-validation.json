@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "date": "2026-09-05",
+  "cartDistance": 3.1444794170808836,
+  "errors": [],
+  "checks": [
+    "default realistic world + automatic walking",
+    "destination arrival",
+    "cart detour",
+    "barrier and recovery",
+    "pause/reset",
+    "follow camera",
+    "geometry overlay",
+    "state export",
+    "actual-world occlusion",
+    "switching environments",
+    "mobile layout",
+    "missing navigation recovery"
+  ]
+}

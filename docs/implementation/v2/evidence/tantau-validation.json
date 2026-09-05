@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-05",
+  "passed": true,
+  "metrics": {
+    "ready": true,
+    "asset": "tantau-great-room",
+    "load": {
+      "loadMs": 3550,
+      "triangles": 165695,
+      "splats": null
+    }
+  },
+  "anchors": [
+    {
+      "id": "patio-door",
+      "position": [
+        -2.6271,
+        1.2485,
+        -6.9751
+      ]
+    },
+    {
+      "id": "island-face",
+      "position": [
+        1.7246,
+        0.3512,
+        -3.4083
+      ]
+    },
+    {
+      "id": "floor-reference",
+      "position": [
+        0.9572,
+        0.1172,
+        -2.3059
+      ]
+    }
+  ],
+  "errors": [],
+  "requestFailures": [],
+  "checks": [
+    "actual Mint RAD streaming without browser login",
+    "matching collider loads",
+    "upright source transform inspected",
+    "three surface anchors",
+    "record export",
+    "mobile layout"
+  ]
+}

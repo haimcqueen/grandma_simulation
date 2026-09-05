@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.artifacts/
+public/samples/*
+.env.local
+public/worlds/

@@ -1,0 +1,16 @@
+{
+  "method": "Estimated normalization from listing 10 ft ceiling and two dominant horizontal collider planes; not surveyed",
+  "sourceFloorY": 0.68,
+  "sourceCeilingY": -0.92,
+  "rotationXDegrees": 180,
+  "scale": 1.905,
+  "floorY": 0,
+  "minimumX": -7.2,
+  "maximumX": 6.8,
+  "minimumZ": -12.1,
+  "maximumZ": 5.9,
+  "cell": 0.15,
+  "radius": 0.28,
+  "height": 1.7,
+  "metricStatus": "unverified"
+}

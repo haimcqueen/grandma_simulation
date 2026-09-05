@@ -1,0 +1,29 @@
+{
+  "manifestVersion": 1,
+  "integrationMode": "remote_stream",
+  "runtime": {
+    "artifactId": "world_runtime_rad",
+    "role": "environment",
+    "kind": "gaussian_splat_world",
+    "renderer": "@sparkjsdev/spark",
+    "format": "rad",
+    "runtimeUrl": "https://cdn.mint.gg/rad/cupertino-great-room-75d102ed1ec65cbc-lod.rad",
+    "byteSize": 43452680,
+    "collider": {
+      "artifactId": "world_collider",
+      "role": "physics_collider",
+      "kind": "triangle_mesh",
+      "format": "glb",
+      "runtimeUrl": "https://cdn.mint.gg/worlds/cupertino-great-room-collider-f2bc2c892005c3d9.glb",
+      "visible": false,
+      "requiredForPhysics": true,
+      "loaderHint": "gltf"
+    },
+    "loaderHint": {
+      "renderer": "SparkRenderer",
+      "mesh": "SplatMesh",
+      "paged": true,
+      "lod": false
+    }
+  }
+}

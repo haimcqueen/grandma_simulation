@@ -1,0 +1,58 @@
+{
+  "record_schema": "hackathon-world-record-v1",
+  "status": "official-sample-probed",
+  "local_world_id": "rustic-kitchen-sample",
+  "provider_world_id": null,
+  "operation_id": null,
+  "model": null,
+  "created_at": null,
+  "input_provenance": [
+    "https://docs.worldlabs.ai/marble/export/specs"
+  ],
+  "prompt": null,
+  "settled_cost_credits": null,
+  "assets": [
+    {
+      "path": "public/samples/kitchen.spz",
+      "bytes": 7582907,
+      "source": "https://wlt-ai-cdn.art/example_exports/rustic_kitchen_with_natural_light/rustic_kitchen_with_natural_light_500k.spz"
+    },
+    {
+      "path": "public/samples/kitchen-collider.glb",
+      "bytes": 2976256,
+      "source": "https://wlt-ai-cdn.art/example_exports/rustic_kitchen_with_natural_light/rustic_kitchen_with_natural_light_collider.glb"
+    }
+  ],
+  "spatial_metadata": {
+    "raw_frame": null,
+    "metric_scale_factor": null,
+    "ground_plane_offset": null,
+    "application_frame": "right-handed Y-up; units unverified",
+    "transforms_applied": [
+      {
+        "asset": "kitchen.spz",
+        "rotation_x_radians": 3.141592653589793,
+        "uniform_scale": 1
+      },
+      {
+        "asset": "kitchen-collider.glb",
+        "rotation_x_radians": 3.141592653589793,
+        "uniform_scale": 1
+      }
+    ],
+    "alignment_evidence": [
+      "Three-view wireframe inspection",
+      "18-ray diagnostic: 17 paired hits, median difference 0.0172, max 0.2209 sample units"
+    ]
+  },
+  "rights": {
+    "source": "https://docs.worldlabs.ai/marble/export/specs",
+    "permitted_use": null,
+    "checked_at": null
+  },
+  "validation": {
+    "viewer": "Spark 2.1.0 / Three.js 0.185.1; local Chrome rendering passed",
+    "collision": "Geometry loaded and raycast; no collision-response validation",
+    "target_device": "Local desktop Chrome, headless; mobile viewport only"
+  }
+}

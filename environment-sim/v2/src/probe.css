@@ -1,0 +1,148 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font: 14px system-ui;
+  color: #e5eee7;
+  background: #202725;
+}
+header {
+  height: 60px;
+  padding: 20px 26px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #43524a;
+}
+header b {
+  letter-spacing: 2px;
+  font-size: 12px;
+}
+header span {
+  color: #90aa9a;
+}
+a {
+  color: #a8d6c0;
+}
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  height: calc(100vh - 60px);
+}
+#viewport {
+  position: relative;
+  min-height: 500px;
+  overflow: hidden;
+}
+canvas {
+  display: block;
+  touch-action: none;
+}
+.caption {
+  position: absolute;
+  z-index: 2;
+  top: 22px;
+  left: 25px;
+  text-shadow: 0 1px 8px #000;
+  pointer-events: none;
+}
+.caption small {
+  letter-spacing: 2px;
+  font-size: 10px;
+}
+.caption h1 {
+  font-size: 27px;
+  font-weight: 500;
+  margin: 10px 0;
+}
+.caption p {
+  font-size: 11px;
+}
+aside {
+  padding: 23px;
+  overflow: auto;
+  background: #26322c;
+}
+h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin-top: 0;
+}
+h3 {
+  font-size: 13px;
+  margin-top: 24px;
+}
+aside p {
+  font-size: 12px;
+  color: #b2c4b7;
+  line-height: 1.6;
+}
+label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0;
+  font-size: 12px;
+}
+input {
+  accent-color: #67cfa4;
+}
+select {
+  margin-left: auto;
+  max-width: 150px;
+}
+select,
+button {
+  font: 12px system-ui;
+  color: #e2ede4;
+  background: #3b5144;
+  border: 1px solid #617a68;
+  border-radius: 5px;
+  padding: 8px;
+  cursor: pointer;
+}
+.buttons {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+button {
+  margin: 4px 0;
+}
+pre {
+  font-size: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #b2d5bb;
+}
+.note {
+  font-size: 10px !important;
+}
+#loading {
+  position: absolute;
+  left: 25px;
+  bottom: 25px;
+  z-index: 3;
+  background: #18251de8;
+  padding: 15px;
+  border-radius: 5px;
+  max-width: 80%;
+}
+summary {
+  cursor: pointer;
+}
+@media (max-width: 700px) {
+  main {
+    display: block;
+    height: auto;
+  }
+  #viewport {
+    height: 65vh;
+  }
+  aside {
+    height: auto;
+  }
+  .caption h1 {
+    font-size: 20px;
+  }
+}

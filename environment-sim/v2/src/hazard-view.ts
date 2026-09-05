@@ -29,7 +29,18 @@ export class RoomHazardView {
       prop.name = `hazard:${zone.hazardId}`;
       prop.position.set(zone.x, floorHeightAt(environment, zone), zone.z);
       prop.scale.setScalar(zone.propScale ?? 1);
+      const scale = zone.propScale ?? 1;
+      const outline = new THREE.Mesh(new THREE.RingGeometry(zone.radius / scale * 0.96, zone.radius / scale, 48),
+        new THREE.MeshBasicMaterial({ color: 0xbb7333, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+      outline.name = "hazard-zone-outline";
+      outline.rotation.x = -Math.PI / 2;
+      outline.position.y = 0.1 / scale;
+      outline.visible = false;
+      prop.add(outline);
     }
+  }
+  showZones(visible: boolean) {
+    this.root.traverse(object => { if (object.name === "hazard-zone-outline") object.visible = visible; });
   }
   dispose() { disposeMeshes(this.root); this.root.clear(); }
 }

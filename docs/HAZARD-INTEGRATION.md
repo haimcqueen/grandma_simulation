@@ -1,10 +1,12 @@
 # Hazard detection + Unitree integration
 
-Updated September 5, 2026. Combines `origin/feature/hazard-detection` (`1c754b4`) with the modular Unitree work on `main` (`8b602c0`). The working application remains **`environment-sim/v2/`**, at **http://127.0.0.1:5174/**.
+Updated September 5, 2026. Combines `origin/feature/hazard-detection` (`1c754b4`) with the modular Unitree work (`8b602c0`) and the latest `main` cutaway update (`d1f67de`). The working application remains **`environment-sim/v2/`**, at **http://127.0.0.1:5174/**.
 
 ## What was combined
 
 The feature branch contributed a condition-specific hazard catalogue, a reusable per-entity proximity tracker, dismissible popups, illustrative object builders and additional openings in the legacy house. Its changes targeted v1, predating the realistic world and newer floor/camera controls.
+
+The latest main update also brings realistic top-down/side/overview cutaways and an orthographic navigation map. Hazard props follow the active scene when switching views; amber exposure outlines appear on the map or with debug geometry. Camera switching leaves hazard and simulation state unchanged.
 
 The merge preserves those contributions and the newer v1 floor, stair, camera, export and fall controls. Ground-floor hazard props follow the ground-floor scene group; ground-floor alerts are hidden upstairs and during floor changes.
 
@@ -75,9 +77,11 @@ npm test
 npm run test:hazards
 npm run test:combined
 npm run test:unitree
+npm run test:top
+npm run test:cutaway
 ```
 
-All 23 v2 tests pass, including catalogue selection, tracker lifecycle, profile changes, per-entity independence, malformed definitions, actual-room zone placement, long-step route encounters, pause/reset/falls and empty-zone environments. The hazard browser suite covers arrow entry in first person, route encounters, dismissal, profile changes, independent prop visibility, fall/reset, environment switching and mobile layout. Combined route/obstacle/occlusion checks also pass. Browser evidence is in ignored `.artifacts/`, including `real-room-hazards.png`.
+All 23 v2 tests pass, including catalogue selection, tracker lifecycle, profile changes, per-entity independence, malformed definitions, actual-room zone placement, long-step route encounters, pause/reset/falls and empty-zone environments. The hazard browser suite covers arrow entry in first person, route encounters, dismissal, profile changes, independent prop visibility, fall/reset, environment switching and mobile layout. Combined route/obstacle/occlusion, top-down map and cutaway browser checks also pass. The hazard suite additionally checks popup/state preservation and prop ownership across map, top, side, overview and follow views; the realistic-room and map screenshots were visually reviewed. Browser evidence is in ignored `.artifacts/`, including `real-room-hazards.png`.
 
 The legacy v1 build, 32 focused fall/floor/manual/gait tests and full stair/fall browser check pass after conflict resolution. A full v1 run passed 57/58 tests; the previously known randomized swarm clustering threshold failed (57% versus the required >60%). That unrelated stochastic test was not weakened.
 

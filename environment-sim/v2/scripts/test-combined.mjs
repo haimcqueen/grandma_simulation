@@ -60,17 +60,40 @@ try {
   const {viewer:v,simulation:s}=window.houseLab;
   v.controls.enableDamping=false;v.camera.position.set(0,1.5,0);v.controls.target.set(0,1,-4);v.controls.update();
   s.position={x:0,z:-9};v.destinations.visible=false;v.resident.root.visible=false;
-  v.world.splats.visible=false;
  });
- await page.waitForTimeout(800);const baseline=await page.locator('canvas').screenshot();
- await page.evaluate(()=>window.houseLab.viewer.resident.root.visible=true);
- await page.waitForTimeout(300);const occluded=await page.locator('canvas').screenshot();
- await writeFile('.artifacts/occlusion-baseline.png',baseline);
- await writeFile('.artifacts/occlusion-resident.png',occluded);
- assert.ok(occluded.equals(baseline),'Actual room wall must occlude resident');
- await page.evaluate(()=>window.houseLab.viewer.worldDepth=false);await page.waitForTimeout(300);
- assert.ok(!(await page.locator('canvas').screenshot()).equals(baseline),'Resident would be visible without room depth');
- await page.evaluate(()=>{window.houseLab.viewer.worldDepth=true;window.houseLab.viewer.destinations.visible=true;window.houseLab.viewer.world.splats.visible=true;});
+ // Render the depth/character layer in isolation so background streaming cannot
+ // change a pixel comparison unrelated to occlusion.
+ const occlusion = await page.evaluate(async () => {
+  const THREE = await import('/node_modules/three/build/three.module.js');
+  const v = window.houseLab.viewer;
+  const target = new THREE.WebGLRenderTarget(256, 256);
+  const previousTarget = v.renderer.getRenderTarget();
+  const previousColor = v.renderer.getClearColor(new THREE.Color()).clone();
+  const previousAlpha = v.renderer.getClearAlpha();
+  const previousAutoClear = v.renderer.autoClear;
+  const previousResident = v.resident.root.visible;
+  const previousDepth = v.world.depth.visible;
+  function sample(resident, depth) {
+   v.resident.root.visible = resident; v.world.depth.visible = depth;
+   v.renderer.setRenderTarget(target); v.renderer.autoClear = true;
+   v.renderer.setClearColor(0, 0); v.renderer.render(v.overlayScene, v.camera);
+   const pixels = new Uint8Array(256 * 256 * 4);
+   v.renderer.readRenderTargetPixels(target, 0, 0, 256, 256, pixels);
+   return pixels;
+  }
+  try {
+   const baseline = sample(false, true), hidden = sample(true, true), exposed = sample(true, false);
+   return { hiddenMatches: baseline.every((value, i) => value === hidden[i]),
+    exposedDiffers: baseline.some((value, i) => value !== exposed[i]) };
+  } finally {
+   v.resident.root.visible = previousResident; v.world.depth.visible = previousDepth;
+   v.renderer.setRenderTarget(previousTarget);v.renderer.setClearColor(previousColor, previousAlpha);
+   v.renderer.autoClear = previousAutoClear; target.dispose();
+  }
+ });
+ assert.equal(occlusion.hiddenMatches, true, 'Actual room wall must occlude resident');
+ assert.equal(occlusion.exposedDiffers, true, 'Resident must be visible without room depth');
+ await page.evaluate(()=>{window.houseLab.viewer.worldDepth=true;window.houseLab.viewer.destinations.visible=true;});
  await page.locator('#reset').click();await page.locator('[data-view="interior"]').click();
  await page.locator('#environment').selectOption('fixture');assert.equal(await page.evaluate(()=>window.houseLab.viewer.mode),'fixture');
  await page.locator('#environment').selectOption('generated');await ready();

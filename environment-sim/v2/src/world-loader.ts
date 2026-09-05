@@ -11,7 +11,7 @@ function transform(object: THREE.Object3D, value: AssetTransform) {
 }
 export async function loadWorld(asset: WorldAsset) {
   const started = performance.now();
-  const { SplatMesh } = await import("@sparkjsdev/spark");
+  const { SplatMesh, SplatEdit, SplatEditSdf, SplatEditSdfType } = await import("@sparkjsdev/spark");
   const splats = new SplatMesh({
     url: asset.splatUrl,
     ...(asset.splatUrl.split("?")[0].endsWith(".rad")
@@ -50,6 +50,37 @@ export async function loadWorld(asset: WorldAsset) {
     opacity: 0.25,
     depthWrite: false,
   });
+  // Both visual splats and depth geometry use the same world-space cut plane.
+  // Only presentation changes: navigation and the original collider stay intact.
+  const cutaway = new SplatEdit({ name: "House cutaway", softEdge: 0 });
+  const ceiling = new SplatEditSdf({ type: SplatEditSdfType.PLANE, opacity: 1 });
+  ceiling.rotation.x = Math.PI / 2;
+  cutaway.add(ceiling);
+  cutaway.sdfs = [ceiling];
+  const frontEdit = new SplatEdit({ name: "Camera-facing wall cut", softEdge: 0 });
+  const frontBox = new SplatEditSdf({ type: SplatEditSdfType.BOX, opacity: 1 });
+  frontBox.scale.set(100, 50, 50);
+  frontEdit.add(frontBox);
+  frontEdit.sdfs = [frontBox];
+  cutaway.add(frontEdit);
+  const frontEnabled = { value: false };
+  const frontEquation = { value: new THREE.Vector3() };
+  const frontBase = { value: 0.65 };
+  for (const material of [depthMaterial, wireMaterial]) {
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.frontEnabled = frontEnabled;
+      shader.uniforms.frontEquation = frontEquation;
+      shader.uniforms.frontBase = frontBase;
+      shader.vertexShader = "varying vec3 cutawayWorld;\n" + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace("#include <begin_vertex>",
+        "#include <begin_vertex>\ncutawayWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+      shader.fragmentShader = "varying vec3 cutawayWorld; uniform bool frontEnabled; uniform vec3 frontEquation; uniform float frontBase;\n" + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace("#include <clipping_planes_fragment>",
+        "#include <clipping_planes_fragment>\nif (frontEnabled && cutawayWorld.y > frontBase && dot(cutawayWorld.xz, frontEquation.xy) > frontEquation.z) discard;");
+    };
+    material.customProgramCacheKey = () => "house-camera-cut-v1";
+  }
+  const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 2);
   let triangles = 0;
   collider.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
@@ -73,6 +104,32 @@ export async function loadWorld(asset: WorldAsset) {
   });
   return {
     splats,
+    cutaway,
+    get cutawayState() {
+      return { ceilingHeight: ceiling.opacity === 0 ? ceiling.position.y : null,
+        frontEnabled: frontEnabled.value, frontEquation: frontEquation.value.toArray() };
+    },
+    setFrontCut(normal: THREE.Vector3 | null, point: THREE.Vector3, floorY: number) {
+      frontEnabled.value = normal !== null;
+      frontBox.opacity = normal === null ? 1 : 0;
+      if (normal) {
+        frontBase.value = floorY + 0.65;
+        frontEquation.value.set(normal.x, normal.z, normal.dot(point));
+        frontBox.position.copy(point).addScaledVector(normal, 50);
+        frontBox.position.y = frontBase.value + 50;
+        frontBox.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+        frontBox.updateMatrixWorld(true);
+      }
+    },
+    setCutaway(height: number | null) {
+      ceiling.opacity = height === null ? 1 : 0;
+      if (height !== null) { ceiling.position.y = height; cutPlane.constant = height; }
+      cutaway.updateMatrixWorld(true);
+      depthMaterial.clippingPlanes = height === null ? null : [cutPlane];
+      wireMaterial.clippingPlanes = height === null ? null : [cutPlane];
+      depthMaterial.needsUpdate = true;
+      wireMaterial.needsUpdate = true;
+    },
     collider,
     depth,
     wire,

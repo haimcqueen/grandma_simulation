@@ -36,6 +36,21 @@ try {
   await page.waitForFunction(() => document.querySelector('#hazard-popup').dataset.severity === 'high');
   await page.locator('[data-view="follow"]').click();
   await page.screenshot({ path: '.artifacts/real-room-hazards.png' });
+  await page.locator('#pause').click();
+  const paused = await page.evaluate(() => window.houseLab.simulation.snapshot());
+  for (const view of ['map', 'top', 'side', 'overview', 'follow']) {
+    await page.locator(`[data-view="${view}"]`).click();
+    await page.waitForFunction(view => {
+      const viewer = window.houseLab.viewer;
+      return viewer.view === view && viewer.hazards.root.parent === (view === 'map' ? viewer.topScene : viewer.overlayScene)
+        && viewer.hazards.root.getObjectByName('hazard-zone-outline').visible === (view === 'map');
+    }, view);
+    assert.equal(await page.locator('#hazard-popup').isVisible(), true);
+    assert.deepEqual(await page.evaluate(() => window.houseLab.simulation.snapshot()), paused);
+    assert.equal(await page.evaluate(() => window.houseLab.viewer.hazards.root.getObjectByName('hazard-zone-outline').visible), view === 'map');
+    if (view === 'map') await page.screenshot({ path: '.artifacts/hazards-map.png' });
+  }
+  await page.locator('#pause').click();
   await page.locator('#hazard-props').uncheck();
   await page.waitForFunction(() => !window.houseLab.viewer.hazards.root.visible);
   assert.equal(await page.locator('#hazard-popup').isVisible(), true, 'Hiding props does not disable detection');

@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": [
+    "real assets in top/overview/side",
+    "camera orbit and zoom",
+    "ceiling clipping matches occluder",
+    "cutaway toggle",
+    "full-room restoration",
+    "simulation state unchanged",
+    "mobile layout"
+  ],
+  "errors": []
+}

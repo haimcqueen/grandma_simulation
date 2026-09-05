@@ -17,7 +17,9 @@
     "test:keyboard": "node scripts/test-keyboard.mjs",
     "test:falls": "node scripts/test-room-falls.mjs",
     "test:unitree": "node scripts/test-unitree.mjs",
-    "test:hazards": "node scripts/test-hazards-browser.mjs"
+    "test:hazards": "node scripts/test-hazards-browser.mjs",
+    "test:top": "node scripts/test-top-view.mjs",
+    "test:cutaway": "node scripts/test-cutaway.mjs"
   },
   "dependencies": {
     "@sparkjsdev/spark": "2.1.0",

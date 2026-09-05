@@ -6,7 +6,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
 const errors = []; page.on('pageerror', e => errors.push(e.message));
 try {
  await mkdir('.artifacts', {recursive:true});
- await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/');
+ await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/simulation.html');
  await page.waitForFunction(()=>window.houseLab?.viewer.mode==='world-simulation',{}, {timeout:60000});
  await page.locator('#reset').click();
  await page.locator('[data-view="map"]').click();

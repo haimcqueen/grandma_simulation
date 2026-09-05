@@ -1,5 +1,7 @@
 # V2 combined simulation handoff
 
+**Current default:** the [manual walkthrough](../../WALKTHROUGH-HANDOFF.md) shows only the realistic room, grandma and four camera views. The studio controls and hazard experiments described below now live at `/simulation.html` (`src/studio.ts`), separate from the default page.
+
 **Hazards are integrated:** see the [hazard merge and reuse notes](../../HAZARD-INTEGRATION.md) for zone configuration, profiles, popups and validation.
 
 **Collaborators:** start with the [Unitree integration and reuse guide](../../UNITREE-COLLABORATOR-GUIDE.md).

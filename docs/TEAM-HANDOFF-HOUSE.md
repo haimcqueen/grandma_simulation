@@ -1,5 +1,7 @@
 # Team handoff: house visuals, upstairs, stairs, and replaceable assets
 
+**Current default:** the [manual walkthrough](WALKTHROUGH-HANDOFF.md) shows only the realistic room, grandma and four camera views. The studio controls and hazard experiments described below now live at `/simulation.html` (`src/studio.ts`), separate from the default page.
+
 **Collaborators:** start with the [Unitree integration and reuse guide](UNITREE-COLLABORATOR-GUIDE.md).
 
 ## Current app correction: use realistic v2

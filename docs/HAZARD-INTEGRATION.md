@@ -1,5 +1,7 @@
 # Hazard detection + Unitree integration
 
+**Current default:** the [manual walkthrough](WALKTHROUGH-HANDOFF.md) shows only the realistic room, grandma and four camera views. The studio controls and hazard experiments described below now live at `/simulation.html` (`src/studio.ts`), separate from the default page.
+
 Updated September 5, 2026. Combines `origin/feature/hazard-detection` (`1c754b4`) with the modular Unitree work (`8b602c0`) and the latest `main` cutaway update (`d1f67de`). The working application remains **`environment-sim/v2/`**, at **http://127.0.0.1:5174/**.
 
 ## What was combined

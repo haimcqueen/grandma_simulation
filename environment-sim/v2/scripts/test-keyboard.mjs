@@ -8,7 +8,7 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await mkdir('.artifacts', { recursive: true });
-  await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/');
+  await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/simulation.html');
   await page.waitForFunction(() => window.houseLab?.viewer.mode === 'world-simulation' && window.houseLab.viewer.animatedResident?.robot, undefined, { timeout: 60000 });
   // Isolate input/braking checks; test:recovery covers keyboard-triggered falls.
   await page.locator('#hazard-falls').uncheck();

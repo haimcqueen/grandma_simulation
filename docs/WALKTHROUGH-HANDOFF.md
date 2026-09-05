@@ -4,6 +4,7 @@ Updated September 5, 2026. The default app at **http://127.0.0.1:5174/** is now 
 
 ## Current behavior
 
+- Grandma uses the reusable `GRANDMA_STANCE` in `src/posture.ts`: deeper knees (0.62 rad), hip flexion (0.30 rad), stronger waist stoop (0.52 rad, the G1 joint limit), forward head and rounded shoulders. Ankle compensation keeps resting soles level.
 - Grandma starts still. Arrow keys or WASD move and turn her; releasing movement brakes to a stop.
 - First person, Third person, Wide and Map are the only visible controls. Camera selection persists while moving. Shortcuts: F, V, B and M respectively; R returns grandma to the spawn.
 - Wide uses the existing room cutaway. Map uses the orthographic navigation map with pan/zoom.

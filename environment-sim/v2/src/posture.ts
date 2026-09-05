@@ -1,9 +1,23 @@
 import { CAUTIOUS, ADULT_MOTION, TODDLER_MOTION, CRAWLING_MOTION, DOG_MOTION } from "../../v1-draft/src/robot/motion";
-import { STOOPED, UPRIGHT, TODDLING } from "../../v1-draft/src/robot/stance";
+import { STOOPED, UPRIGHT, TODDLING, type Stance } from "../../v1-draft/src/robot/stance";
 import { BABY_CRAWL, TROT, type CrawlStyle } from "../../v1-draft/src/robot/crawl";
 
+/** Pronounced crouch and stoop for the walkthrough's grandma character. */
+export const GRANDMA_STANCE: Stance = {
+  ...STOOPED,
+  id: "grandma-stooped",
+  label: "Deeply stooped",
+  waistPitch: 0.52, // G1 waist flexion limit.
+  hipFlex: 0.30,
+  kneeFlex: 0.62,
+  ankleComp: -0.32, // Balance hip/knee flexion so resting soles stay level.
+  shoulderProtract: 0.46,
+  elbowFlex: -0.75,
+  headForward: 0.40,
+};
+
 export const postures = {
-  grandma: { stance: STOOPED, motion: CAUTIOUS, speed: 0.77, asset: "g1", label: "G1 · Grandma, cautious steps", maxHeight: 1.7, crawl: undefined as CrawlStyle | undefined },
+  grandma: { stance: GRANDMA_STANCE, motion: CAUTIOUS, speed: 0.77, asset: "g1", label: "G1 · Grandma, cautious steps", maxHeight: 1.7, crawl: undefined as CrawlStyle | undefined },
   upright: { stance: UPRIGHT, motion: ADULT_MOTION, speed: 1.3, asset: "g1", label: "G1 · Upright", maxHeight: 1.7, crawl: undefined as CrawlStyle | undefined },
   adult: { stance: UPRIGHT, motion: ADULT_MOTION, speed: 1.3, asset: "h1", label: "H1 · Adult", maxHeight: 1.7, crawl: undefined as CrawlStyle | undefined },
   toddler: { stance: TODDLING, motion: TODDLER_MOTION, speed: 0.55, asset: "g1", label: "G1 · Toddler stand-in", maxHeight: 0.95, crawl: undefined as CrawlStyle | undefined },

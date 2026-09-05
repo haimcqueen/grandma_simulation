@@ -4,6 +4,7 @@ import { disposeMeshes } from "../scene-resources";
 import { loadRobotResident } from "../robot-resident";
 import { defaultRobotAssets } from "../robot-assets";
 import type { Posture } from "../posture";
+import type { RoomFall } from "../falls";
 
 /** Human bones consume the existing G1 pose. No independent animation clock or clips. */
 const mapping = [
@@ -66,6 +67,8 @@ export async function loadGrandmaResident(initialPosture: Posture = "grandma", u
     });
     const rootRotation = new THREE.Quaternion(), desired = new THREE.Quaternion(), parentInverse = new THREE.Quaternion();
     const bounds = new THREE.Box3(), rootPosition = new THREE.Vector3();
+    let fall: RoomFall | null = null;
+    const vertex = new THREE.Vector3();
     const transferPose = () => {
       source.updateMatrixWorld(true); root.updateMatrixWorld(true);
       root.getWorldQuaternion(rootRotation);
@@ -80,6 +83,22 @@ export async function loadGrandmaResident(initialPosture: Posture = "grandma", u
       bounds.setFromObject(rig, true); root.getWorldPosition(rootPosition);
       rig.position.y += rootPosition.y - bounds.min.y;
       root.updateMatrixWorld(true);
+      // The human is one skinned mesh, so use posed vertices rather than a whole-body
+      // box to find the parts directly over the teammate's furniture support.
+      const support = fall?.obstacle?.support;
+      if (support) {
+        let lift = 0;
+        rig.traverse(child => {
+          if (!(child instanceof THREE.Mesh)) return;
+          for (let index = 0; index < child.geometry.attributes.position.count; index++) {
+            child.getVertexPosition(index, vertex).applyMatrix4(child.matrixWorld);
+            if (Math.abs(vertex.x - support.x) <= support.width / 2 && Math.abs(vertex.z - support.z) <= support.depth / 2)
+              lift = Math.max(lift, support.top + 0.012 - vertex.y);
+          }
+        });
+        rig.position.y += lift;
+        root.updateMatrixWorld(true);
+      }
     };
     driver.update(0, 0, false, false); transferPose();
     bounds.setFromObject(rig, true);
@@ -91,7 +110,7 @@ export async function loadGrandmaResident(initialPosture: Posture = "grandma", u
       root, driver,
       metadata: { height: referenceHeight, model: "Grandma", animation: "unitree-retargeted" },
       setMotion: driver.setMotion,
-      setFall: driver.setFall,
+      setFall(next: RoomFall | null) { fall = next; driver.setFall(next); },
       getEyePosition(target: THREE.Vector3) { head.getWorldPosition(target); target.y += referenceHeight * 0.035; return target; },
       update(time: number, distance: number, walking: boolean, paused: boolean) {
         driver.update(time, distance, walking, paused); transferPose();

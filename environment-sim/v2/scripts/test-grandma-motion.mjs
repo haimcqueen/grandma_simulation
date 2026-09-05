@@ -34,15 +34,23 @@ try {
     samples.push({kind,elapsed,...bounds()});
    }
   }
+  const support={x:-.65,z:.3,width:.8,depth:1,top:.54};
+  actor.setFall({kind:'trip',elapsed:1.9,autoRecover:true,obstacle:{travel:.55,support}});actor.update(8,.2,false,false);
+  let supportedVertices=0,lowestSupported=Infinity;
+  actor.root.traverse(mesh=>{if(!mesh.isMesh)return;for(let i=0;i<mesh.geometry.attributes.position.count;i++){
+   const p=mesh.getVertexPosition(i,new THREE.Vector3()).applyMatrix4(mesh.matrixWorld);
+   if(Math.abs(p.x-support.x)<=support.width/2&&Math.abs(p.z-support.z)<=support.depth/2){supportedVertices++;lowestSupported=Math.min(lowestSupported,p.y);}
+  }});
   actor.setFall(null);actor.update(9,.2,false,false);
   renderer.render(scene,camera);
   window.motionReview={actor,scene,camera,renderer};
-  return {initial,robot,moving,paused,upper,turned,samples};
+  return {initial,robot,moving,paused,upper,turned,samples,supportedVertices,lowestSupported};
  });
  assert.ok(Math.abs(report.initial.height-report.robot)<.03,JSON.stringify(report));
  assert.ok(report.moving>.01);assert.ok(report.paused<1e-6);
  assert.ok(Math.abs(report.upper.min-3.4)<.01);assert.ok(Math.abs(report.turned.min)<.01);
  assert.ok(report.samples.every(s=>Number.isFinite(s.height)&&s.height>.1&&Math.abs(s.min)<.01));
+ assert.ok(report.supportedVertices>0);assert.ok(report.lowestSupported>=.551);
  await page.screenshot({path:'.artifacts/grandma-unitree-motion.png'});
  await page.evaluate(()=>{const {actor,scene,camera,renderer}=window.motionReview;actor.setFall({kind:'sideways',elapsed:2.2,autoRecover:true});actor.update(12,.2,false,false);renderer.render(scene,camera);});
  await page.screenshot({path:'.artifacts/grandma-unitree-fall.png'});

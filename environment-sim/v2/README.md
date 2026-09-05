@@ -6,6 +6,8 @@
 
 **Collaborators:** start with the [Unitree integration and reuse guide](../../docs/UNITREE-COLLABORATOR-GUIDE.md).
 
+**Grandma appearance toggle:** the room and connected-house walkthroughs now offer **Use Grandma / Use Unitree**. The human mesh follows the existing G1 walking, stoop, fall and recovery code and matches its posed height. Start with the [Grandma teammate handoff](../../docs/GRANDMA-HANDOFF.md) for setup, assets, adapter reuse, checks and known limitations.
+
 The v1-style movement loop now runs **inside the photo-guided Tantau room**. The studio page includes the team's articulated Unitree G1 robot, three connected destinations, automatic walking, a movable scenario cart, a passage barrier, pause/reset, camera views, geometry inspection and state export. Character artwork remains replaceable by the character teammate.
 
 See the [v2.1 handoff](../../docs/implementation/v2.1/README.md) for realistic camera/cutaway behavior, teammate merge guidance, checks and limitations. V2.1 is an update to this application, not a separate source folder.

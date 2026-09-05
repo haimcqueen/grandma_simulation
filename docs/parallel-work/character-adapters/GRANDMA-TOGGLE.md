@@ -2,6 +2,8 @@
 
 Updated September 5, 2026 in `environment-sim/v2`. This supersedes the idle-only preview.
 
+Start with the [teammate handoff](../../GRANDMA-HANDOFF.md) for setup and the latest integration status.
+
 Open `/` or `/?house=1` and select **Use Grandma** at the bottom right. **Use Unitree** restores the robot. Switching preserves position, floor, heading, route, camera, speed, pause state, and hazard policy. Switching is disabled during a fall or stair journey. Failed loads keep the current actor.
 
 ## One motion implementation, two appearances
@@ -19,6 +21,8 @@ The original asset is `public/characters/grandma-idle.glb`, copied from the user
 The shared Unitree rig/gait/fall files are unchanged. Teammates can edit those motions and the human adapter will consume their output. Adjust the mapping/calibration in `src/characters/grandma.ts` for a different human skeleton. This adapter targets the humanoid G1; it is not a generic Go2/quadruped retargeter. The separate `viewer.loadResident()` matching-clip API remains available for other assets.
 
 Human proportions, clothing deformation and hand/foot placement differ from the robot. This does not make the human mesh geometrically identical to the robot's links or validate human-body obstacle clearance, cane contact, biomechanics or foot IK. Grounding is skin-bound based; walking on stairs uses the existing connector, not individual foot placement on treads. Further visual refinement can stay in this adapter without changing simulation behavior.
+
+The merged forward-ottoman encounter supplies `fall.obstacle.support`. After floor grounding, the human adapter lifts deformed vertices within that furniture footprint above its top surface. This preserves the teammate's support intent for a single skinned mesh. It is a vertex support approximation, not swept triangle collision; the hidden motion driver's world placement is not used to position the visible human.
 
 ## Validation
 

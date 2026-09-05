@@ -16,6 +16,7 @@ import { postures, type Posture } from "./posture";
 import { defaultRobotAssets, type RobotAsset } from "./robot-assets";
 import { RoomHazardView } from "./hazard-view";
 import { buildHouseMap } from "./house-map";
+import { loadGrandmaResident } from "./characters/grandma";
 
 export class Viewer {
   readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -53,7 +54,7 @@ export class Viewer {
   mode: "fixture" | "world" | "world-simulation" = "fixture";
   readonly navigationMap = new THREE.Group();
   readonly mapConnections = new THREE.Group();
-  animatedResident?: Awaited<ReturnType<typeof loadAnimatedResident | typeof loadRobotResident>>;
+  animatedResident?: Awaited<ReturnType<typeof loadAnimatedResident | typeof loadRobotResident | typeof loadGrandmaResident>>;
   view: "overview" | "interior" | "follow" | "first" | "top" | "side" | "map" = "overview";
   debugVisible = false;
   worldDepth = true;
@@ -324,6 +325,7 @@ export class Viewer {
   async loadResident(assets: ResidentAssets) {
     return this.replaceResident(() => loadAnimatedResident(assets));
   }
+  async loadGrandma(posture: Posture = "grandma") { return this.replaceResident(() => loadGrandmaResident(posture)); }
   async loadRobot(posture: Posture = "grandma", asset: RobotAsset = defaultRobotAssets[postures[posture].asset as keyof typeof defaultRobotAssets]) {
     return this.replaceResident(() => loadRobotResident(posture, asset));
   }
@@ -331,8 +333,8 @@ export class Viewer {
     const revision = ++this.residentRevision;
     const resident = await load();
     if (revision !== this.residentRevision) { resident.dispose(); return; }
-    this.animatedResident?.dispose();
-    disposeMeshes(this.resident.root);
+    if (this.animatedResident) this.animatedResident.dispose();
+    else disposeMeshes(this.resident.root);
     this.resident.root.clear();
     this.resident.root.add(resident.root);
     this.animatedResident = resident;
@@ -627,6 +629,10 @@ export class Viewer {
         const orientation = robot.root.getWorldQuaternion(new THREE.Quaternion());
         this.camera.up.set(0, 1, 0).applyQuaternion(orientation);
         this.controls.target.copy(this.camera.position).add(new THREE.Vector3(0, 0, 1).applyQuaternion(orientation));
+      }
+      if (this.animatedResident && "getEyePosition" in this.animatedResident) {
+        this.animatedResident.getEyePosition(this.camera.position);
+        this.controls.target.copy(this.camera.position).add(new THREE.Vector3(Math.sin(simulation.heading), -0.08, Math.cos(simulation.heading)));
       }
       this.camera.lookAt(this.controls.target);
     }

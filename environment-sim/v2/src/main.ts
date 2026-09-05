@@ -21,6 +21,7 @@ app.innerHTML = `
   <nav class="camera-views" aria-label="Camera views">
     ${views.map(view => `<button data-view="${view.id}" aria-pressed="${view.id === "follow"}" title="${view.label} (${view.shortcut})" disabled>${view.label}</button>`).join("")}
   </nav>
+  <div class="character-switch"><button id="grandma-toggle" aria-pressed="false" disabled>Use Grandma</button><span id="character-status" role="status"></span></div>
   ${connectedHouse ? `<div class="house-actions"><button id="walk-floor" disabled>Walk upstairs</button><button id="stop-walk" disabled>Stop here</button><span id="movement-status" role="status"></span></div>` : ""}
   <div class="loading-message" role="status"><span id="load-status">Loading the room…</span><button id="retry" hidden>Try again</button></div>
   <div class="walk-hint"><span>↑ ↓ Move <span class="hint-divider">/</span> ← → Turn <span class="hint-divider">/</span> WASD</span><span id="camera-hint">Drag to look · Scroll to zoom</span></div>
@@ -37,6 +38,29 @@ let movement: MovementProgram | undefined;
 let disposeClickWalking: (() => void) | undefined;
 let ready = false;
 let disposed = false;
+let grandmaSelected = false;
+let switchingCharacter = false;
+const characterToggle = document.querySelector<HTMLButtonElement>("#grandma-toggle")!;
+const characterStatus = document.querySelector<HTMLElement>("#character-status")!;
+characterToggle.onclick = async () => {
+  if (!ready || !viewer || !simulation || switchingCharacter || simulation.fall || simulation.floorJourney) return;
+  const nextGrandma = !grandmaSelected;
+  switchingCharacter = true; characterToggle.disabled = true;
+  characterStatus.textContent = "Loading…";
+  try {
+    if (nextGrandma) await viewer.loadGrandma(simulation.posture); else await viewer.loadRobot(simulation.posture);
+    if (disposed) return;
+    grandmaSelected = nextGrandma;
+    characterToggle.textContent = nextGrandma ? "Use Unitree" : "Use Grandma";
+    characterToggle.setAttribute("aria-pressed", String(nextGrandma));
+    characterStatus.textContent = "";
+  } catch {
+    characterStatus.textContent = "Could not switch character. Try again.";
+  } finally {
+    switchingCharacter = false; characterToggle.disabled = !ready;
+    characterToggle.blur();
+  }
+};
 
 function selectView(view: Viewer["view"]) {
   if (!ready || !viewer) return;
@@ -150,6 +174,7 @@ async function start() {
         accumulator -= 1 / 60;
       }
       viewer!.update(simulation!);
+      characterToggle.disabled = switchingCharacter || !!simulation!.fall || !!simulation!.floorJourney;
       if (connectedHouse) {
         const floorButton = document.querySelector<HTMLButtonElement>("#walk-floor")!;
         floorButton.disabled = !!simulation!.floorJourney;

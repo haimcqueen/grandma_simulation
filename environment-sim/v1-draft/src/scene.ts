@@ -8,6 +8,13 @@ import {
   type HouseObject,
 } from "./environment";
 import type { Simulation } from "./simulation";
+import { Robot } from "./robot/robot";
+import { pose } from "./robot/gait";
+import { UPRIGHT, lerpStance } from "./robot/stance";
+import { crawl } from "./robot/crawl";
+import { SUBJECTS, subjectById, type Subject } from "./robot/subjects";
+import { LIVERIES } from "./robot/livery";
+import { loadFigurine } from "./robot/figurine";
 
 export function createHouseScene(
   container: HTMLElement,
@@ -47,6 +54,39 @@ export function createHouseScene(
     controls.update();
   }
   setView(false);
+
+  /** Close follow on the resident. Overhead and floor-plan views release it. */
+  let follow = false;
+  let followDistance = 3.2;
+  const followTarget = new THREE.Vector3();
+  const followEye = new THREE.Vector3();
+
+  function setFollow(on: boolean) {
+    follow = on;
+    controls.enabled = !on;
+    if (!on) setView(topView);
+  }
+
+  function zoomFollow(delta: number) {
+    followDistance = Math.min(9, Math.max(1.1, followDistance + delta));
+  }
+
+  function updateFollow(simulation: Simulation, height: number) {
+    if (!follow) return;
+    // eye-level on the subject, so a 0.5 m infant is framed like a 1.8 m adult
+    const eyeHeight = Math.max(0.35, height * 0.82);
+    followTarget.set(simulation.position.x, eyeHeight, simulation.position.z);
+    const back = followDistance;
+    followEye.set(
+      simulation.position.x - Math.sin(simulation.heading) * back,
+      eyeHeight + followDistance * 0.42,
+      simulation.position.z - Math.cos(simulation.heading) * back,
+    );
+    camera.position.lerp(followEye, 0.12);
+    controls.target.lerp(followTarget, 0.18);
+    camera.lookAt(controls.target);
+  }
+
   scene.add(new THREE.HemisphereLight(0xfffaf0, 0x87958a, 2.5));
   const sun = new THREE.DirectionalLight(0xfff4dc, 3.2);
   sun.position.set(-8, 25, 12);
@@ -277,41 +317,60 @@ export function createHouseScene(
   }
   const resident = new THREE.Group();
   scene.add(resident);
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.19, 0.43, 5, 12),
-    material(0x347d70),
-  );
-  body.position.y = 0.93;
-  body.castShadow = true;
-  resident.add(body);
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.17, 16, 12),
-    material(0xc79d7a),
-  );
-  head.position.y = 1.48;
-  head.castShadow = true;
-  resident.add(head);
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.175, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-    material(0xe1dfd8),
-  );
-  hair.position.y = 1.49;
-  resident.add(hair);
-  const limbs: THREE.Group[] = [];
-  for (const side of [-1, 1]) {
-    const leg = new THREE.Group();
-    leg.position.set(side * 0.105, 0.65, 0);
-    box(leg, 0, -0.25, 0, 0.13, 0.5, 0.14, 0x48575b);
-    box(leg, 0, -0.51, 0.05, 0.15, 0.09, 0.25, 0x384344);
-    resident.add(leg);
-    limbs.push(leg);
-    const arm = new THREE.Group();
-    arm.position.set(side * 0.25, 1.15, 0);
-    box(arm, 0, -0.22, 0, 0.11, 0.42, 0.12, 0x347d70);
-    box(arm, 0, -0.46, 0, 0.1, 0.09, 0.1, 0xc79d7a);
-    resident.add(arm);
-    limbs.push(arm);
+  const figurine = new THREE.Group();
+  figurine.position.set(4.95, 0, 9.4);
+  scene.add(figurine);
+  const figurineReady = loadFigurine().then(model => {
+    figurine.add(model);
+  });
+  // Placeholder resident replaced with a baked Unitree GLB. The `resident`
+  // group contract is unchanged: simulation still owns position and heading.
+  // Forward is +Z in the bake, matching this project's stated convention.
+  let robot: Robot | null = null;
+  let hunch = 1;
+  let subject: Subject = SUBJECTS[0];
+  const cache = new Map<string, Robot>();
+  let subjectRequest = 0;
+
+  async function setSubject(id: string) {
+    const request = ++subjectRequest;
+    const next = subjectById(id);
+    let loaded = cache.get(next.asset);
+    if (!loaded) {
+      loaded = await new Robot().load(
+        `/robot/${next.asset}.glb`,
+        `/robot/${next.asset}.joints.json`,
+      );
+      cache.set(next.asset, loaded);
+    }
+    if (request !== subjectRequest) return null;
+    if (robot && robot !== loaded) resident.remove(robot.root);
+    subject = next;
+    robot = loaded;
+    resident.add(loaded.root);
+    console.info(
+      `[resident] ${next.label}: ${loaded.height.toFixed(2)}m, ${next.speedMps} m/s, ${next.locomotion}`,
+    );
+    return next;
   }
+  void setSubject("grandma").catch((error) =>
+    console.error("[resident] load failed", error),
+  );
+
+  let liveryIndex = 0;
+  function cycleSkin() {
+    liveryIndex = (liveryIndex + 1) % LIVERIES.length;
+    robot?.setSkin(LIVERIES[liveryIndex]);
+    return LIVERIES[liveryIndex];
+  }
+
+  window.addEventListener("keydown", (event) => {
+    const key = event.key.toLowerCase();
+    if (key === "[") hunch = Math.max(0, hunch - 0.1);
+    if (key === "]") hunch = Math.min(1, hunch + 0.1);
+    if (key === "k") console.info(`[resident] skin: ${cycleSkin().label}`);
+  });
+
   const halo = new THREE.Mesh(
     new THREE.RingGeometry(0.32, 0.39, 40),
     new THREE.MeshBasicMaterial({
@@ -347,20 +406,28 @@ export function createHouseScene(
   let revision = -1;
   function update(simulation: Simulation) {
     resident.position.set(simulation.position.x, 0, simulation.position.z);
-    const turn = Math.atan2(
-      Math.sin(simulation.heading - resident.rotation.y),
-      Math.cos(simulation.heading - resident.rotation.y),
-    );
-    resident.rotation.y += turn * 0.2;
-    const stride =
-      simulation.status === "walking" && !simulation.paused
-        ? Math.sin(simulation.distance * 9) * 0.43
-        : 0;
-    limbs.forEach(
-      (limb, index) =>
-        (limb.rotation.x =
-          stride * (index < 2 ? 1 : -1) * (index % 2 ? -1 : 1)),
-    );
+    resident.rotation.y = simulation.heading;
+    if (robot) {
+      if (subject.locomotion === "quadruped" && subject.crawl) {
+        const { bob, roll } = crawl(
+          robot,
+          subject.crawl,
+          simulation.gaitPhase,
+          simulation.time,
+          0,
+          simulation.gaitBlend,
+        );
+        robot.root.rotation.z = roll;
+        robot.settleOnGround(bob);
+      } else {
+        const stance = lerpStance(UPRIGHT, subject.stance ?? UPRIGHT, hunch);
+        const { bob } = pose(robot, stance, simulation.gaitPhase, simulation.time,
+          1, subject.motion, simulation.gaitBlend);
+        robot.root.rotation.z = 0;
+        robot.settleOnGround(bob);
+      }
+    }
+
     if (revision !== simulation.revision) {
       revision = simulation.revision;
       clearGroup(obstructionGroup);
@@ -406,6 +473,7 @@ export function createHouseScene(
     );
     controls.update();
     renderer.render(scene, camera);
+    updateFollow(simulation, robot?.height ?? 1.3);
   }
   const raycaster = new THREE.Raycaster();
   let down = { x: 0, y: 0 };
@@ -435,7 +503,19 @@ export function createHouseScene(
   observer.observe(container);
   return {
     update,
-    setView,
+    setView: (top: boolean) => {
+      if (follow) setFollow(false);
+      setView(top);
+    },
+    setFollow,
+    isFollowing: () => follow,
+    zoomFollow,
+    setSubject,
+    subjects: SUBJECTS,
+    figurineReady,
+    setFigurineVisible: (visible: boolean) => { figurine.visible = visible; },
+    setSkin: (id: string) => robot?.setSkin(id),
+    liveries: LIVERIES,
     setDebug: (value: boolean) => (debugGroup.visible = value),
     setLabels: (value: boolean) =>
       labels.forEach((label) => (label.visible = value)),

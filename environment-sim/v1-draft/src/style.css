@@ -304,6 +304,21 @@ h3 > span {
 .segmented button[data-scenario="blocked"].active {
   color: #a3613f;
 }
+#subject {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d4d4ca;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.figurine-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
 .hint {
   font-size: 10px;
   line-height: 1.6;

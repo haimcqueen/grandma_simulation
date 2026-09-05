@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# upstream robot descriptions — re-clone with the commands in PROJECT_CONTEXT.md
+.tmp_unitree/
+.tmp_men/
+.tmp_lerobot/
+
+# reference clone of the Microduck Sandbox HF Space, not our code
+sandbox/
+
+# superseded standalone exploration; only src/scenario is kept (see §7)
+web/*
+!web/src/
+web/src/*
+!web/src/scenario/

@@ -26,7 +26,8 @@ export function createFallDangerOverlay(host: HTMLElement) {
       panel.hidden = !fall;
       if (!fall) return;
       panel.querySelector("[data-title]")!.textContent = fall.hazard?.label ?? "Simulated fall";
-      panel.querySelector("[data-phase]")!.textContent = status === "recovering" ? "Getting back up" : status === "fallen" ? "Fall detected · On the floor" : "Fall detected";
+      panel.querySelector("[data-phase]")!.textContent = status === "recovering" ? "Getting back up" : status === "fallen"
+        ? fall.obstacle?.support ? "Fall detected · Caught on the ottoman" : "Fall detected · On the floor" : "Fall detected";
       for (const dimension of ["likelihood", "intensity"] as const) {
         const level = fall.hazard?.danger?.[dimension];
         const row = panel.querySelector<HTMLElement>(`[data-rating="${dimension}"]`)!;

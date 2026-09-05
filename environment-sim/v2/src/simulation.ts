@@ -105,18 +105,15 @@ export class Simulation {
     if (hit && kind && touching && !this.triggeredZones.has(zoneKey(hit.zone))) {
       let obstacleFall: RoomFall["obstacle"];
       const obstacle = this.environment.hazardZones?.find(zone => zoneKey(zone) === zoneKey(hit.zone))?.obstacle;
-      if (obstacle) {
-        // A solid object cannot be crossed. Find clear floor beside the contact point.
-        const candidates = [{ travel: 0, lateral: -1.05 }, { travel: 0, lateral: 1.05 },
-          { travel: -0.45, lateral: -0.9 }, { travel: -0.45, lateral: 0.9 }];
-        const landing = candidates.find(candidate => {
-          const next = { x: this.position.x + Math.sin(this.heading) * candidate.travel + Math.cos(this.heading) * candidate.lateral,
-            z: this.position.z + Math.cos(this.heading) * candidate.travel - Math.sin(this.heading) * candidate.lateral };
-          return distance(next, hit.zone) > 0.9
-            && segmentClear(this.environment, this.position, next, this.obstacles, this.profile.radius);
-        });
-        if (!landing) return; // Keep the solid contact when there is no safe landing space.
-        obstacleFall = { ...obstacle, ...landing };
+      if (obstacle && solid) {
+        // Tip forward onto the cushion; recovery returns to the contact point.
+        // The visual support constraint keeps articulated links above the solid.
+        const toward = (solid.x - this.position.x) * Math.sin(this.heading)
+          + (solid.z - this.position.z) * Math.cos(this.heading);
+        if (toward <= 0) return;
+        obstacleFall = { ...obstacle, travel: Math.max(0.25, Math.min(0.55, toward - 0.15)), lateral: 0,
+          support: { x: solid.x, z: solid.z, width: solid.width, depth: solid.depth,
+            top: (obstacle.baseY ?? this.environment.floorY) + solid.height } };
       }
       this.triggeredZones.add(zoneKey(hit.zone));
       const resume = { manual: this.manual, destination: this.destination };
@@ -251,7 +248,9 @@ export class Simulation {
         z: this.fallOrigin.z + Math.cos(this.heading) * frame.forward - Math.sin(this.heading) * frame.lateral,
       };
       // Constrain root travel to this room's grid; articulated limbs are not collision bodies.
-      if (segmentClear(this.environment, this.position, next, this.obstacles, this.profile.radius)) this.position = next;
+      const obstacles = this.fall.obstacle?.support
+        ? this.obstacles.filter(object => object.id !== this.fall!.obstacle!.solidId) : this.obstacles;
+      if (segmentClear(this.environment, this.position, next, obstacles, this.profile.radius)) this.position = next;
       if (frame.progress === 1 && this.status === "falling") {
         this.status = "fallen";
         this.record("fallCompleted", this.fall.autoRecover ? "Landed. Preparing to stand up." : "Fall demo complete. Replay or reset to walk again.", [this.characterId]);

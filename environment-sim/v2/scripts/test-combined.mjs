@@ -7,12 +7,35 @@ const errors=[];page.on('pageerror',error=>errors.push(error.message));
 const ready=()=>page.waitForFunction(()=>window.houseLab?.viewer.mode==='world-simulation',{}, {timeout:60000});
 try {
  await mkdir(".artifacts", { recursive: true });
- await page.goto(process.env.BASE_URL || 'http://localhost:5174/');await ready();
- await page.waitForFunction(()=>window.houseLab.simulation.distance>.6);
+ await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/');await ready();
+ await page.waitForFunction(() => window.houseLab?.viewer.animatedResident?.robot?.meshCount > 0);
+ assert.equal(await page.locator('#resident-name').innerText(), 'Unitree G1');
+ const robotPose = () => page.evaluate(() => {
+  const root = window.houseLab.viewer.resident.root;
+  return { heading: root.quaternion.toArray(), joints: ['left_hip_pitch_joint', 'right_hip_pitch_joint', 'left_knee_joint'].map(name => root.getObjectByName(name).quaternion.toArray()) };
+ });
+ const initialPose = await robotPose();
+ const initialDistance = await page.evaluate(() => window.houseLab.simulation.distance);
+ await page.waitForFunction(distance => window.houseLab.simulation.distance > distance + 0.3, initialDistance);
+ assert.notDeepEqual((await robotPose()).joints, initialPose.joints, 'Robot joints follow walking distance');
  assert.equal(await page.evaluate(()=>window.houseLab.routine.active),true);
  await page.locator('#pause').click();
  const paused=await page.evaluate(()=>window.houseLab.simulation.snapshot());
+ const pausedPose = await robotPose();
  await page.waitForTimeout(300);assert.deepEqual(await page.evaluate(()=>window.houseLab.simulation.snapshot()),paused);
+ assert.deepEqual(await robotPose(), pausedPose, 'Pause freezes robot joints and heading');
+ const footOffset = await page.evaluate(() => {
+  const root = window.houseLab.viewer.resident.root;
+  root.updateMatrixWorld(true);
+  let minimumY = Infinity;
+  root.traverse(node => {
+   if (!node.isMesh) return;
+   node.geometry.computeBoundingBox();
+   minimumY = Math.min(minimumY, node.geometry.boundingBox.clone().applyMatrix4(node.matrixWorld).min.y);
+  });
+  return minimumY - root.position.y;
+ });
+ assert.ok(Math.abs(footOffset) < 0.02, 'Robot feet follow the sampled room floor');
  await page.screenshot({path:'.artifacts/combined-walking.png'});
  await page.locator('#reset').click();
  await page.locator('[data-scenario="cart"]').click();
@@ -37,6 +60,7 @@ try {
   const {viewer:v,simulation:s}=window.houseLab;
   v.controls.enableDamping=false;v.camera.position.set(0,1.5,0);v.controls.target.set(0,1,-4);v.controls.update();
   s.position={x:0,z:-9};v.destinations.visible=false;v.resident.root.visible=false;
+  v.world.splats.visible=false;
  });
  await page.waitForTimeout(800);const baseline=await page.locator('canvas').screenshot();
  await page.evaluate(()=>window.houseLab.viewer.resident.root.visible=true);
@@ -46,7 +70,7 @@ try {
  assert.ok(occluded.equals(baseline),'Actual room wall must occlude resident');
  await page.evaluate(()=>window.houseLab.viewer.worldDepth=false);await page.waitForTimeout(300);
  assert.ok(!(await page.locator('canvas').screenshot()).equals(baseline),'Resident would be visible without room depth');
- await page.evaluate(()=>{window.houseLab.viewer.worldDepth=true;window.houseLab.viewer.destinations.visible=true;});
+ await page.evaluate(()=>{window.houseLab.viewer.worldDepth=true;window.houseLab.viewer.destinations.visible=true;window.houseLab.viewer.world.splats.visible=true;});
  await page.locator('#reset').click();await page.locator('[data-view="interior"]').click();
  await page.locator('#environment').selectOption('fixture');assert.equal(await page.evaluate(()=>window.houseLab.viewer.mode),'fixture');
  await page.locator('#environment').selectOption('generated');await ready();

@@ -103,3 +103,27 @@ test("blocked stair approach is rejected and reset safely cancels a climb", () =
   assert.equal(sim.elevation, 0);
   assert.deepEqual(sim.position, spawn);
 });
+
+test("walking into the stair entrance engages keyboard traversal and releasing forward stops it", () => {
+  for (const level of ["ground", "upper"] as const) {
+    const sim = new Simulation();
+    sim.setLevel(level);
+    sim.position = { ...STAIR_ENTRY[level] };
+    sim.heading = -Math.PI / 2;
+    sim.setManual(true);
+    sim.setStairInput(1);
+    sim.drive(1, 0, 1 / 60);
+    assert.equal(sim.manualStairs, true);
+    for (let i = 0; i < 1200 && Math.abs(sim.elevation - (level === "upper" ? FLOOR_RISE : 0)) < 0.4; i++) sim.advance(1 / 60);
+    assert.equal(sim.onStairs, true);
+    sim.setStairInput(0);
+    const stopped = { ...sim.position, elevation: sim.elevation };
+    sim.advance(2);
+    assert.deepEqual({ ...sim.position, elevation: sim.elevation }, stopped);
+    sim.setStairInput(1);
+    for (let i = 0; i < 9000 && sim.changingFloor; i++) sim.advance(1 / 60);
+    assert.equal(sim.level, level === "ground" ? "upper" : "ground");
+    assert.equal(sim.manual, true);
+    assert.equal(sim.manualStairs, false);
+  }
+});

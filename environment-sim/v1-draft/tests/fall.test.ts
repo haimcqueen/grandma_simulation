@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { Simulation } from '../src/simulation.ts'
 import { patioFallZone, contains } from '../src/environment.ts'
 import { subjectById } from '../src/robot/subjects.ts'
-import { BALCONY, BALCONY_APPROACH, BALCONY_AIR_TIME, BALCONY_DURATION, FALL_DURATION, poseFall } from '../src/robot/fall.ts'
+import { BALCONY, BALCONY_APPROACH, BALCONY_AIR_TIME, BALCONY_DURATION, FALL_DURATION, FALL_SCENARIOS, fallOrientation, poseFall } from '../src/robot/fall.ts'
 
 function enterPatio(simulation: Simulation) {
   simulation.requestDestination('patio')
@@ -164,4 +164,48 @@ test('post-impact pose draws the knees and arms inward', () => {
   assert.ok(joints.get('left_knee_joint')! > extendedKnee)
   assert.ok(joints.get('left_elbow_joint')! < extendedElbow)
   assert.ok(injured.roll < -0.8)
+})
+
+test('each situation has distinct motion and completes once with repeatable replay', () => {
+  const outcomes = new Set<string>()
+  for (const scenario of FALL_SCENARIOS) {
+    const sim = new Simulation()
+    assert.equal(sim.playFall(scenario.id), true)
+    sim.advance(scenario.duration * 0.5)
+    const halfway = [sim.position.x, sim.position.z, sim.elevation, sim.fallProgress]
+    sim.paused = true
+    sim.advance(10)
+    assert.deepEqual([sim.position.x, sim.position.z, sim.elevation, sim.fallProgress], halfway)
+    sim.paused = false
+    sim.advance(scenario.duration + 2)
+    assert.equal(sim.status, 'fallen', scenario.id)
+    assert.ok(Math.abs(sim.elevation) < 1e-9, scenario.id)
+    assert.equal(sim.events.filter(e => e.type === 'fallCompleted').length, 1)
+    const orientation = fallOrientation(scenario.id, 0.65)
+    outcomes.add(JSON.stringify([halfway, orientation]))
+    sim.playFall(scenario.id)
+    sim.advance(scenario.duration * 0.5)
+    assert.deepEqual([sim.position.x, sim.position.z, sim.elevation, sim.fallProgress], halfway)
+  }
+  assert.equal(outcomes.size, FALL_SCENARIOS.length)
+  assert.ok(fallOrientation('patio', 0.9).pitch < 0)
+  assert.ok(fallOrientation('trip', 0.9).pitch > 0)
+  assert.ok(Math.abs(fallOrientation('sideways', 0.9).roll) > 1.4)
+  assert.ok(fallOrientation('stairs', 0.9).pitch > Math.PI * 2)
+})
+
+test('all situation poses remain finite for every articulated biped and the figurine', () => {
+  for (const id of ['grandma', 'adult', 'toddler', 'grandma-figurine']) {
+    for (const scenario of FALL_SCENARIOS) {
+      const sim = new Simulation()
+      sim.setSubject(subjectById(id))
+      assert.equal(sim.playFall(scenario.id), true)
+      for (let i = 0; i < 6; i++) {
+        sim.advance(scenario.duration / 5)
+        if (sim.subject.stance) poseFall({ set: (_name, angle) => assert.ok(Number.isFinite(angle)) }, sim.subject.stance, sim.gaitPhase, sim.time, sim.subject.motion, sim.gaitBlend, sim.fallProgress, sim.injuryProgress, scenario.id)
+        const orientation = fallOrientation(scenario.id, sim.fallProgress, sim.injuryProgress)
+        assert.ok([sim.position.x, sim.position.z, sim.elevation, orientation.pitch, orientation.roll].every(Number.isFinite))
+      }
+    }
+  }
 })

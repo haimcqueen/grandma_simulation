@@ -1,10 +1,26 @@
 # V2 combined simulation handoff
 
+**Collaborators:** start with the [Unitree integration and reuse guide](../../UNITREE-COLLABORATOR-GUIDE.md).
+
 Updated 2026-09-05. Implemented at the user's request: combine the realistic house with the v1-style walking simulation so the character teammate can extend a working scene.
 
-## Outcome
+## Unitree integration follow-up
 
-**http://localhost:5174/** now opens the photo-guided World Labs room with a walking procedural resident. The automatic routine visits three connected destinations. Manual destination commands, cart detours, passage blocking/recovery, speed, pause/reset, follow camera, geometry overlays and scenario export operate in that same room.
+The user explicitly selected v2 as the working app. Use **http://127.0.0.1:5174/**. This address now serves the realistic app, replacing the v1 server previously there; another legacy app may still occupy localhost's IPv6 address.
+
+`posture.ts` catalogues G1 grandma/upright/toddler, H1 adult and Go2 infant-crawl/dog-trot presets. `robot-resident.ts` loads their shared v1 GLBs/joint metadata and reuses `gait`, `crawl`, `stance`, `livery` and `fall` helpers. The adapter implements `setMotion(posture, phase, hunch, skin)`, `setFall(fall)` and `update(...)`; it owns mesh pose only. Root position, heading, gait phase, fall time, skin, hunch and playback speed remain simulation-owned and exported. Body changes preserve position and pause state; incompatible biped falls are disabled for Go2. H1 height is capped at the existing grid's 1.7 m envelope; toddler G1 is capped at 0.95 m. All presets still use the same 0.28 m / 1.7 m navigation envelope. This is not full-body collision.
+
+`falls.ts` is a room-local scenario catalogue for forward, backward and sideways falls. `Simulation.playFall` cancels route/manual travel, captures the current room position and plays a deterministic relative track. Root translations are checked against the room's navigation and dynamic obstacles; limbs can still intersect geometry. No original patio/balcony/stair location is imported. Pause, replay and reset use the same simulation clock as walking. `viewer.ts` applies articulated poses, maintains floor contact and handles eye-position first person / collider-aware third person. Custom resident replacements need `setFall` before their UI can offer fall playback.
+
+Keyboard: arrows or WASD drive; F first person, V third person; 1–5 choose the original robot presets; [ / ] tune posture and K cycles skins. Movement keys take over from the walking routine, ignore active form fields and clear on pause/reset/blur/environment or body changes. Releasing keys brakes. Preset selection blurs the dropdown so arrows can immediately drive. Playback speed scales both manual movement and simulation time.
+
+**Still outstanding:** reconstruct the staircase and upstairs in the realistic world, register appearance/collider transforms, validate navigation and then add floor traversal. The current generated room has no usable stair connection. V1 floor-plan coordinates and balcony fall sets are unrelated to this world. The garden and unrigged grandma figurine are also separate v1 features; this follow-up ports the Unitree bodies.
+
+Validation on September 5: production build and all 16 simulation tests passed. The keyboard baseline, room-fall browser suite, all six Unitree body/movement presets in both camera modes, and the combined room/route/obstacle/occlusion regression passed. The room-fall check now verifies rendered pixel variation before its first-person screenshot: RAD initialization can finish before streamed appearance pages draw. First-person, H1, Go2 and fall captures were visually reviewed. Browser scripts accept `BASE_URL`; screenshots are in v2 `.artifacts/`.
+
+## Original integration outcome
+
+**http://127.0.0.1:5174/** opens the photo-guided World Labs room with the articulated Unitree resident. The automatic routine visits three connected destinations. Manual destination commands, cart detours, passage blocking/recovery, speed, pause/reset, follow camera, geometry overlays and scenario export operate in that same room.
 
 The room inspection workspace moved to **http://localhost:5174/environment.html**. The authored fixture is **http://localhost:5174/simulation.html?fixture=1**. No new generation, purchase, public deployment or Git push was performed for this integration.
 
@@ -12,7 +28,7 @@ The room inspection workspace moved to **http://localhost:5174/environment.html*
 
 Start with [the app README](../../../environment-sim/v2/README.md), then `src/character.ts`, `src/viewer.ts` and `src/contracts.ts`. Replace the resident's visual mesh/gait; preserve a feet-origin root, +Z forward, and the simulation-owned position/heading. The single loop in `main.ts` owns time. `Simulation` owns movement and events; `WalkingRoutine` issues destination requests using that same clock.
 
-The optional `viewer.loadResident(...)` adapter accepts a GLB model plus matching idle/walk clips. No new generated character is required to run the app. The shipped character is explicitly a replaceable placeholder; the final character asset/animation integration remains the character teammate's work.
+The optional `viewer.loadResident(...)` adapter accepts a GLB model plus matching idle/walk clips. No new generated character is required to run the app. The shipped character now uses the Unitree adapter described above. The procedural resident remains the fallback if robot loading fails.
 
 ## Environment handoff
 
@@ -27,7 +43,7 @@ Both splats and collider use X rotation 180°, scale 1.905 and translation `[0,1
 
 The 0.15 m navigation grid has 520 accepted cells for a 0.28 m radius and 1.7 m height. Three destinations were selected in its connected central/rear passage area. Routes are checked against grid cells and dynamic obstacle footprints. Low geometry within 0.12 m of the floor is treated as floor noise. This is not a complete-house accessibility model or a small-hazard detector.
 
-Rendering keeps the generated room in all three camera modes, then writes collider depth before drawing the resident/props. The appearance and movement geometry agree approximately; the generated collider is imperfect. Baked furniture remains fixed. Some camera angles are blurrier or more distorted than the source-photo view.
+Rendering keeps the generated room in all camera modes, then writes collider depth before drawing the resident/props. The appearance and movement geometry agree approximately; the generated collider is imperfect. Baked furniture remains fixed. Some camera angles are blurrier or more distorted than the source-photo view.
 
 ## Sharing and extending
 

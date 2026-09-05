@@ -23,7 +23,7 @@ import { SUBJECTS, subjectById, type Subject } from "./robot/subjects";
 import { LIVERIES } from "./robot/livery";
 import { SwarmView } from "./robot/swarmView";
 import { loadFigurine } from "./robot/figurine";
-import { BALCONY, BALCONY_APPROACH, poseFall } from "./robot/fall";
+import { BALCONY, BALCONY_APPROACH, poseFall, fallOrientation } from "./robot/fall";
 
 export function createHouseScene(
   container: HTMLElement,
@@ -87,12 +87,6 @@ export function createHouseScene(
   function updateThirdPerson(simulation: Simulation, height: number) {
     const aspect = container.clientWidth / Math.max(1, container.clientHeight);
     const framing = Math.max(1, 0.9 / aspect);
-    if (simulation.onStairs) {
-      followTarget.set(4.3, 1.6, 14.2);
-      thirdPersonCamera.position.copy(followTarget).add(new THREE.Vector3(-4.8, 2.8, 3.6).multiplyScalar(framing));
-      thirdPersonCamera.lookAt(followTarget);
-      return;
-    }
     if (simulation.isFalling && simulation.fallKind === "balcony") {
       followTarget.set(BALCONY.x, 1.6, BALCONY.z + 1.6);
       thirdPersonCamera.position.copy(followTarget).add(new THREE.Vector3(5, 3.8, 6).multiplyScalar(framing));
@@ -102,7 +96,7 @@ export function createHouseScene(
     const eyeHeight = simulation.elevation + Math.max(0.35,
       height * 0.55 * (simulation.isFalling ? 1 - simulation.fallProgress * 0.8 : 1));
     followTarget.set(simulation.position.x, eyeHeight, simulation.position.z);
-    const back = followDistance * framing;
+    const back = (simulation.onStairs ? Math.min(1.65, followDistance) : followDistance) * framing;
     followEye.set(
       simulation.position.x - Math.sin(simulation.heading) * back,
       eyeHeight + back * 0.4,
@@ -348,6 +342,9 @@ export function createHouseScene(
   fallZone.position.set(patioFallZone.x, 0.04, patioFallZone.z);
   fallZone.visible = false;
   scene.add(fallZone);
+  const tripCue = new THREE.Group();
+  box(tripCue, 5.7, 0.04, 9.72, 0.75, 0.06, 0.08, 0x9c8668);
+  const tripCueSlot = assets.register("fall:trip-cue", scene, tripCue);
   const balcony = new THREE.Group();
   balcony.name = "balcony-animation-set";
   balcony.visible = false;
@@ -500,6 +497,10 @@ export function createHouseScene(
     const onUpper = simulation.level === "upper";
     container.dataset.floorLevel = simulation.level;
     container.dataset.elevation = simulation.elevation.toFixed(3);
+    container.dataset.heading = simulation.heading.toFixed(4);
+    container.dataset.stairControl = simulation.manualStairs ? "manual" : "automatic";
+    container.dataset.fallKind = simulation.fallKind;
+    container.dataset.fallProgress = simulation.fallProgress.toFixed(3);
     if (simulation.level !== displayedLevel) {
       displayedLevel = simulation.level;
       target.set(onUpper ? 6 : 5.5, onUpper ? FLOOR_RISE : 0, onUpper ? 13 : 11);
@@ -517,15 +518,16 @@ export function createHouseScene(
     halo.position.y = simulation.elevation + 0.03;
     routeLine.position.y = onUpper ? FLOOR_RISE : 0;
     debugGroup.position.y = onUpper ? FLOOR_RISE : 0;
-    fallZone.visible = simulation.patioFallEnabled;
+    fallZone.visible = simulation.patioFallEnabled || (simulation.isFalling && simulation.fallKind === "patio");
+    tripCueSlot.visible = simulation.isFalling && simulation.fallKind === "trip";
     balcony.visible = simulation.isFalling && simulation.fallKind === "balcony";
     labels.forEach(roomLabel => { roomLabel.visible = showRoomLabels && cameraMode === "wide"; });
     halo.visible = !simulation.isFalling && cameraMode === "wide";
     if (figurineModel && subject.locomotion === "rigid") {
       figurineModel.position.y = 0;
       if (simulation.isFalling) {
-        const pitch = simulation.fallProgress * Math.PI / 2;
-        figurineModel.rotation.set(pitch, 0, -0.25 * simulation.fallProgress);
+        const { pitch, roll } = fallOrientation(simulation.fallKind, simulation.fallProgress, simulation.injuryProgress);
+        figurineModel.rotation.set(pitch, 0, roll);
         figurineModel.updateMatrixWorld(true);
         figurineBounds.setFromObject(figurineModel);
         figurineModel.position.y = -figurineBounds.min.y + simulation.elevation;
@@ -539,7 +541,7 @@ export function createHouseScene(
         const stance = lerpStance(UPRIGHT, subject.stance ?? UPRIGHT, hunch);
         const { pitch, roll } = poseFall(robot, stance, simulation.gaitPhase,
           simulation.fallStartedAt, subject.motion, simulation.gaitBlend, simulation.fallProgress,
-          simulation.injuryProgress);
+          simulation.injuryProgress, simulation.fallKind);
         robot.root.rotation.set(pitch, 0, roll);
         robot.settleOnGround(simulation.elevation);
       } else if (subject.locomotion === "quadruped" && subject.crawl) {

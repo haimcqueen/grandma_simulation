@@ -15,7 +15,7 @@ import {
 import { planRoute, segmentClear } from "./navigation";
 import { angleDifference, approach } from "./robot/motion";
 import { SUBJECTS, type Subject } from "./robot/subjects";
-import { FALL_DURATION, BALCONY_APPROACH, BALCONY_DURATION, balconyFrame, type FallKind } from "./robot/fall";
+import { BALCONY_APPROACH, balconyFrame, fallDuration, situationFrame, type FallKind } from "./robot/fall";
 export type SimulationEvent = {
   time: number;
   type: string;
@@ -28,7 +28,10 @@ export class Simulation {
   stairRoute: StairPoint[] = [];
   get onStairs() { return this.stairRoute.length > 0; }
   get changingFloor() { return this.stairTarget !== null; }
-  requestFloor(level: FloorLevel) {
+  manualStairs = false;
+  private stairInput = 0;
+  setStairInput(value: number) { this.stairInput = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0; }
+  requestFloor(level: FloorLevel, manualControl = false) {
     if (this.isFalling || this.changingFloor || level === this.level) return false;
     const route = planRoute(this.position, STAIR_ENTRY[this.level], this.obstacles, this.floorRegions);
     if (!route) {
@@ -36,6 +39,7 @@ export class Simulation {
       return false;
     }
     this.manual = false;
+    this.manualStairs = manualControl;
     this.destination = null;
     this.stairTarget = level;
     this.route = route;
@@ -65,6 +69,8 @@ export class Simulation {
     this.stairRoute.shift();
     this.currentSpeed = 0;
     if (!this.stairRoute.length) {
+      this.manual = this.manualStairs;
+      this.manualStairs = false;
       this.level = this.stairTarget!;
       this.stairTarget = null;
       this.elevation = this.level === "upper" ? FLOOR_RISE : 0;
@@ -99,9 +105,10 @@ export class Simulation {
   fallElapsed = 0;
   injuryProgress = 0;
   elevation = 0;
+  private fallOrigin: Point = { ...spawn };
   get fallStage() {
     return this.fallKind === "balcony" ? balconyFrame(this.fallElapsed).stage
-      : this.status === "fallen" ? "Injured on the ground" : "Stumbling on the patio";
+      : situationFrame(this.fallKind, this.fallElapsed).stage;
   }
   get isFalling() { return this.status === "falling" || this.status === "fallen"; }
   paused = false;
@@ -136,6 +143,7 @@ export class Simulation {
   }
   playFall(kind: FallKind) {
     if (this.changingFloor || this.level === "upper" || this.subject.locomotion === "quadruped") return false;
+    this.scenario = "clear";
     this.reset();
     this.fallKind = kind;
     this.status = "falling";
@@ -146,17 +154,20 @@ export class Simulation {
       this.position = { x: frame.x, z: frame.z };
       this.elevation = frame.elevation;
     } else {
-      this.position = { x: patioFallZone.x, z: patioFallZone.z };
-      this.heading = Math.PI;
+      this.position = kind === "stairs" ? { x: 3.7, z: 14.5 }
+        : kind === "patio" ? { x: patioFallZone.x, z: patioFallZone.z }
+        : kind === "trip" ? { x: 5.7, z: 9.4 } : { x: 8.3, z: 5.4 };
+      this.heading = kind === "stairs" ? Math.PI / 2 : 0;
+      this.elevation = kind === "stairs" ? 1.53 : 0;
     }
-    this.record("fallStarted", kind === "balcony"
-      ? "Balcony animation: approaching an unguarded edge."
-      : "Patio animation: losing footing.", ["resident-01", `${kind}-fall-zone`]);
+    this.fallOrigin = { ...this.position };
+    this.record("fallStarted", this.fallStage, ["resident-01", `${kind}-fall-zone`]);
     return true;
   }
   private checkPatioFall(travel: number) {
     if (this.changingFloor || !this.patioFallEnabled || this.subject.locomotion !== "biped" || travel <= 0 ||
       !contains(this.position, patioFallZone)) return false;
+    this.fallOrigin = { ...this.position };
     this.status = "falling";
     this.fallProgress = 0;
     this.fallKind = "patio";
@@ -218,6 +229,10 @@ export class Simulation {
     if (!Number.isFinite(forward) || !Number.isFinite(turn)) return;
     forward = Math.max(-1, Math.min(1, forward));
     turn = Math.max(-1, Math.min(1, turn));
+    const entry = STAIR_ENTRY[this.level];
+    if (forward > 0 && Math.hypot(this.position.x - entry.x, this.position.z - entry.z) < 0.8 && -Math.sin(this.heading) > 0.65) {
+      if (this.requestFloor(this.level === "ground" ? "upper" : "ground", true)) return;
+    }
     const obstacles = this.obstacles;
     for (let remaining = delta; remaining > 0.0000001;) {
       const step = Math.min(remaining, 1 / 60);
@@ -297,9 +312,12 @@ export class Simulation {
       const step = Math.min(remaining, 1 / 60);
       remaining -= step;
       this.time += step;
-      if (this.onStairs) this.climbStep(step);
+      if (this.changingFloor && this.manualStairs && this.stairInput <= 0) {
+        this.currentSpeed = 0;
+        this.animateMotion(0, 0, step);
+      } else if (this.onStairs) this.climbStep(step);
       else if (this.isFalling) {
-        const duration = this.fallKind === "balcony" ? BALCONY_DURATION : FALL_DURATION;
+        const duration = fallDuration(this.fallKind);
         this.fallElapsed = Math.min(duration + 1.2, this.fallElapsed + step);
         if (this.fallKind === "balcony") {
           const frame = balconyFrame(this.fallElapsed);
@@ -313,8 +331,14 @@ export class Simulation {
             this.animateMotion(travel, 0, step);
           }
         } else {
-          this.fallProgress = Math.min(1, this.fallElapsed / FALL_DURATION);
-          this.injuryProgress = Math.min(1, Math.max(0, (this.fallElapsed - FALL_DURATION) / 1.2));
+          const frame = situationFrame(this.fallKind, this.fallElapsed);
+          this.fallProgress = frame.progress;
+          this.injuryProgress = frame.injuryProgress;
+          this.position = {
+            x: this.fallOrigin.x + Math.sin(this.heading) * frame.forward + Math.cos(this.heading) * frame.lateral,
+            z: this.fallOrigin.z + Math.cos(this.heading) * frame.forward - Math.sin(this.heading) * frame.lateral,
+          };
+          this.elevation = frame.elevation;
         }
         if (this.fallElapsed >= duration && this.status === "falling") {
           this.status = "fallen";
@@ -372,6 +396,8 @@ export class Simulation {
     }
   }
   reset() {
+    this.manualStairs = false;
+    this.stairInput = 0;
     this.stairTarget = null;
     this.stairRoute = [];
     this.position = { ...(this.level === "upper" ? upperSpawn : spawn) };

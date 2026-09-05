@@ -6,7 +6,9 @@ import type {
   SimulationEvent,
 } from "./contracts";
 import { isWalkable, scenarioObjects } from "./environment";
-import { distance, planRoute } from "./navigation";
+import { distance, planRoute, segmentClear } from "./navigation";
+import { postures, type Posture } from "./posture";
+import { roomFalls, roomFallFrame, roomFallDuration, type RoomFall, type RoomFallKind } from "./falls";
 
 export class Simulation {
   readonly characterId = "resident-01";
@@ -15,15 +17,25 @@ export class Simulation {
   route: Point[] = [];
   destination: string | null = null;
   scenario: Scenario = "clear";
-  status: "idle" | "walking" | "arrived" | "blocked" = "idle";
+  status: "idle" | "walking" | "arrived" | "blocked" | "falling" | "fallen" = "idle";
+  fall: RoomFall | null = null;
+  private fallOrigin: Point;
   paused = false;
+  manual = false;
+  posture: Posture = "grandma";
+  hunch = 1;
+  skin = "factory";
+  playbackSpeed = 1;
+  currentSpeed = 0;
+  gaitPhase = 0;
   time = 0;
   distance = 0;
   revision = 0;
   events: SimulationEvent[] = [];
-  profile: MovementProfile = { speed: 0.9, radius: 0.28, height: 1.7 };
+  profile: MovementProfile = { speed: postures.grandma.speed, radius: 0.28, height: 1.7 };
   constructor(readonly environment: Environment) {
     this.position = { ...environment.spawn };
+    this.fallOrigin = { ...this.position };
     this.record("ready", "Resident ready. Choose a destination.", [
       this.characterId,
     ]);
@@ -45,10 +57,64 @@ export class Simulation {
     ].slice(0, 40);
   }
   requestDestination(id: string) {
+    if (this.fall) return;
     if (!this.environment.destinations.some((target) => target.id === id))
       throw new Error(`Unknown destination: ${id}`);
+    this.manual = false;
+    this.currentSpeed = 0;
     this.destination = id;
     this.replan(false);
+  }
+  setPosture(posture: Posture) {
+    if (this.fall) return;
+    this.posture = posture;
+    this.profile.speed = postures[posture].speed;
+    this.currentSpeed = 0;
+  }
+  setManual() {
+    if (this.fall) return;
+    if (this.manual) return;
+    this.manual = true;
+    this.route = [];
+    this.destination = null;
+    this.currentSpeed = 0;
+    this.status = "idle";
+    this.record("manualControlStarted", "Keyboard control. W/S move; A/D turn.", [this.characterId]);
+  }
+  stopManualMotion() {
+    this.currentSpeed = 0;
+    if (this.manual) this.status = "idle";
+  }
+  drive(forward: number, turn: number, delta: number) {
+    if (this.paused || !this.manual || ![forward, turn, delta].every(Number.isFinite) || delta <= 0) return;
+    delta *= this.playbackSpeed;
+    forward = Math.max(-1, Math.min(1, forward));
+    turn = Math.max(-1, Math.min(1, turn));
+    const motion = postures[this.posture].motion;
+    const obstacles = this.obstacles;
+    for (let remaining = delta; remaining > 0.0000001;) {
+      const step = Math.min(remaining, 1 / 60);
+      remaining -= step;
+      const rotation = turn * motion.turnRate * step;
+      this.heading += rotation;
+      const target = forward * this.profile.speed * (forward < 0 ? 0.5 : 1);
+      const rate = Math.abs(target) > Math.abs(this.currentSpeed) ? motion.acceleration : motion.deceleration;
+      const change = Math.max(-rate * step, Math.min(rate * step, target - this.currentSpeed));
+      this.currentSpeed += change;
+      const travel = this.currentSpeed * step;
+      const next = {
+        x: this.position.x + Math.sin(this.heading) * travel,
+        z: this.position.z + Math.cos(this.heading) * travel,
+      };
+      let actual = 0;
+      if (segmentClear(this.environment, this.position, next, obstacles, this.profile.radius)) {
+        actual = distance(this.position, next);
+        this.position = next;
+      } else this.currentSpeed = 0;
+      this.distance += actual;
+      this.gaitPhase += actual * Math.sign(travel) / motion.strideLength + Math.abs(rotation) * 0.3;
+      this.status = actual > 0.000001 || Math.abs(rotation) > 0.000001 ? "walking" : "idle";
+    }
   }
   private replan(changed: boolean) {
     const target = this.environment.destinations.find(
@@ -77,6 +143,7 @@ export class Simulation {
     );
   }
   setScenario(scenario: Scenario) {
+    if (this.fall) return false;
     if (scenario === this.scenario) return true;
     if (
       !isWalkable(
@@ -115,8 +182,24 @@ export class Simulation {
     if (!Number.isFinite(delta) || delta < 0)
       throw new Error("Simulation step must be finite and nonnegative.");
     if (this.paused) return;
+    delta *= this.playbackSpeed;
     this.time += delta;
-    if (this.status !== "walking") return;
+    if (this.fall) {
+      this.fall.elapsed = Math.min(this.fall.elapsed + delta, roomFallDuration(this.fall.kind));
+      const frame = roomFallFrame(this.fall);
+      const next = {
+        x: this.fallOrigin.x + Math.sin(this.heading) * frame.forward + Math.cos(this.heading) * frame.lateral,
+        z: this.fallOrigin.z + Math.cos(this.heading) * frame.forward - Math.sin(this.heading) * frame.lateral,
+      };
+      // Constrain root travel to this room's grid; articulated limbs are not collision bodies.
+      if (segmentClear(this.environment, this.position, next, this.obstacles, this.profile.radius)) this.position = next;
+      if (frame.progress === 1 && this.status !== "fallen") {
+        this.status = "fallen";
+        this.record("fallCompleted", "Fall demo complete. Replay or reset to walk again.", [this.characterId]);
+      }
+      return;
+    }
+    if (this.manual || this.status !== "walking") return;
     let remaining = this.profile.speed * delta;
     while (remaining > 0 && this.route.length) {
       const next = this.route[0],
@@ -134,6 +217,7 @@ export class Simulation {
         z: this.position.z + (dz / length) * travel,
       };
       this.distance += travel;
+      this.gaitPhase += travel / postures[this.posture].motion.strideLength;
       remaining -= travel;
       if (travel === length) this.route.shift();
     }
@@ -146,7 +230,27 @@ export class Simulation {
       );
     }
   }
+  playFall(kind: RoomFallKind) {
+    if (postures[this.posture].crawl) return false;
+    const scenario = roomFalls.find(fall => fall.id === kind);
+    if (!scenario) return false;
+    if (this.fall) this.position = { ...this.fallOrigin };
+    this.fallOrigin = { ...this.position };
+    this.fall = { kind, elapsed: 0 };
+    this.manual = false;
+    this.currentSpeed = 0;
+    this.route = [];
+    this.destination = null;
+    this.paused = false;
+    this.status = "falling";
+    this.record("fallStarted", `${scenario.label} · authored movement demo.`, [this.characterId]);
+    return true;
+  }
   reset() {
+    this.fall = null;
+    this.manual = false;
+    this.currentSpeed = 0;
+    this.gaitPhase = 0;
     this.position = { ...this.environment.spawn };
     this.heading = 0;
     this.route = [];
@@ -172,7 +276,15 @@ export class Simulation {
       destination: this.destination,
       scenario: this.scenario,
       status: this.status,
+      fall: this.fall,
       paused: this.paused,
+      manual: this.manual,
+      posture: this.posture,
+      hunch: this.hunch,
+      skin: this.skin,
+      playbackSpeed: this.playbackSpeed,
+      currentSpeed: this.currentSpeed,
+      gaitPhase: this.gaitPhase,
       time: this.time,
       distance: this.distance,
       revision: this.revision,

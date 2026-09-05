@@ -167,6 +167,68 @@ test("grid navigation avoids blocked cells and rejects unsupported clearance", a
 const { readFileSync } = await import('node:fs');
 const roomDescriptor = JSON.parse(readFileSync(new URL('../public/environment/tantau-simulation.json', import.meta.url)));
 const realisticRoom = { ...roomDescriptor, navigation: JSON.parse(readFileSync(new URL('../public/environment/tantau-navigation.json', import.meta.url))) };
+test('keyboard takeover cancels routes, ramps speed, brakes and preserves pause', () => {
+  const simulation = new Simulation(realisticRoom);
+  simulation.requestDestination('kitchen');
+  simulation.setManual();
+  assert.equal(simulation.destination, null);
+  assert.deepEqual(simulation.route, []);
+  simulation.drive(1, 0, 1 / 60);
+  assert.ok(simulation.currentSpeed > 0 && simulation.currentSpeed < simulation.profile.speed);
+  simulation.drive(1, 0, 0.4);
+  assert.ok(simulation.distance > 0.05);
+  simulation.paused = true;
+  const paused = simulation.snapshot();
+  simulation.drive(1, 1, 10);
+  simulation.advance(10);
+  assert.deepEqual(simulation.snapshot(), paused);
+  simulation.paused = false;
+  simulation.drive(0, 0, 2);
+  assert.equal(simulation.currentSpeed, 0);
+  assert.equal(simulation.status, 'idle');
+  simulation.requestDestination('kitchen');
+  assert.equal(simulation.manual, false);
+  walk(simulation);
+  assert.equal(simulation.status, 'arrived');
+});
+test('keyboard movement cannot tunnel through generated geometry or scenario blockers', () => {
+  for (const scenario of ['clear', 'cart', 'blocked']) {
+    for (let direction = 0; direction < 12; direction++) {
+      const simulation = new Simulation(realisticRoom);
+      simulation.setScenario(scenario);
+      simulation.setManual();
+      simulation.heading = direction * Math.PI / 6;
+      const start = { ...simulation.position };
+      simulation.drive(1, 0, 30);
+      assert.ok(segmentClear(realisticRoom, start, simulation.position, simulation.obstacles, simulation.profile.radius));
+      assert.equal(simulation.currentSpeed, 0);
+      const phase = simulation.gaitPhase;
+      simulation.drive(1, 0, 2);
+      assert.equal(simulation.gaitPhase, phase, 'Blocked feet stop stepping');
+    }
+  }
+});
+test('grandma preset, reverse gait, turning and reset share one motion state', () => {
+  const simulation = new Simulation(realisticRoom);
+  assert.equal(simulation.posture, 'grandma');
+  assert.equal(simulation.profile.speed, 0.77);
+  simulation.setManual();
+  simulation.drive(-1, 0, 0.2);
+  assert.ok(simulation.gaitPhase < 0);
+  simulation.stopManualMotion();
+  const position = { ...simulation.position };
+  simulation.drive(0, 1, 0.5);
+  assert.deepEqual(simulation.position, position);
+  assert.ok(simulation.heading > 0);
+  simulation.setPosture('upright');
+  assert.equal(simulation.profile.speed, 1.3);
+  assert.deepEqual(simulation.position, position);
+  simulation.reset();
+  assert.equal(simulation.manual, false);
+  assert.equal(simulation.gaitPhase, 0);
+  assert.equal(simulation.posture, 'upright');
+  assert.deepEqual(simulation.position, realisticRoom.spawn);
+});
 const { validateSimulationEnvironment } = await import('../src/simulation-environment.ts');
 const { WalkingRoutine } = await import('../src/walking-routine.ts');
 test('actual room anchors are reachable in both directions with clearance on every step', () => {
@@ -198,4 +260,71 @@ test('walking routine visits every actual-room destination and respects pause', 
   assert.equal(reached.size,3);simulation.paused=true;const before=simulation.snapshot();
   for(let i=0;i<120;i++){simulation.advance(1/60);routine.advance();}assert.deepEqual(simulation.snapshot(),before);
   routine.stop();simulation.reset();assert.equal(routine.active,false);assert.equal(simulation.status,'idle');
+});
+
+test('room fall demos preserve world coordinates, pause, replay and movement ownership', () => {
+  for (const kind of ['trip', 'patio', 'sideways']) {
+    const simulation = new Simulation(realisticRoom);
+    const origin = { ...simulation.position };
+    simulation.requestDestination('kitchen');
+    assert.equal(simulation.playFall(kind), true);
+    assert.equal(simulation.destination, null);
+    assert.deepEqual(simulation.route, []);
+    simulation.advance(0.7);
+    simulation.paused = true;
+    const paused = simulation.snapshot();
+    simulation.advance(10);
+    simulation.setManual();
+    simulation.drive(1, 1, 10);
+    simulation.requestDestination('dining');
+    assert.deepEqual(simulation.snapshot(), paused);
+    assert.equal(simulation.setScenario('cart'), false);
+    simulation.paused = false;
+    for (let step = 0; step < 240; step++) {
+      const before = { ...simulation.position };
+      simulation.advance(1 / 60);
+      assert.ok(segmentClear(realisticRoom, before, simulation.position, simulation.obstacles, simulation.profile.radius));
+    }
+    assert.equal(simulation.status, 'fallen');
+    assert.equal(simulation.events.filter(event => event.type === 'fallCompleted').length, 1);
+    const landed = { ...simulation.position };
+    assert.equal(simulation.playFall(kind), true);
+    assert.deepEqual(simulation.position, origin);
+    simulation.advance(10);
+    assert.deepEqual(simulation.position, landed);
+    simulation.reset();
+    assert.equal(simulation.fall, null);
+    assert.equal(simulation.status, 'idle');
+    assert.deepEqual(simulation.position, origin);
+  }
+});
+
+test('generated room rejects unsupported stair and balcony demos without changing state', () => {
+  const simulation = new Simulation(realisticRoom);
+  const before = simulation.snapshot();
+  assert.equal(simulation.playFall('stairs'), false);
+  assert.equal(simulation.playFall('balcony'), false);
+  assert.deepEqual(simulation.snapshot(), before);
+});
+
+test('Unitree body presets and slow playback retain the generated-room navigation contract', () => {
+  for (const preset of ['grandma', 'upright', 'adult', 'baby', 'toddler', 'dog']) {
+    const simulation = new Simulation(realisticRoom);
+    simulation.setPosture(preset);
+    simulation.playbackSpeed = 0.25;
+    simulation.setManual();
+    simulation.drive(1, 0, 1);
+    simulation.advance(1);
+    assert.equal(simulation.time, 0.25);
+    assert.ok(simulation.distance > 0);
+    assert.ok(isWalkable(realisticRoom, simulation.position, simulation.obstacles, simulation.profile.radius));
+    assert.equal(simulation.playFall('trip'), !['baby', 'dog'].includes(preset));
+    if (simulation.fall) {
+      simulation.advance(1);
+      assert.equal(simulation.fall.elapsed, 0.25);
+    }
+    simulation.reset();
+    assert.equal(simulation.posture, preset);
+    assert.equal(simulation.playbackSpeed, 0.25);
+  }
 });

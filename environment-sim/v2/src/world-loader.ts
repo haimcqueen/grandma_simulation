@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { AssetTransform, WorldAsset } from "./contracts";
+import { disposeMeshes } from "./scene-resources";
 
 function transform(object: THREE.Object3D, value: AssetTransform) {
   object.position.fromArray(value.position);
@@ -98,14 +99,4 @@ export async function loadWorld(asset: WorldAsset) {
   };
 }
 
-export function disposeMeshes(root: THREE.Object3D) {
-  root.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      child.geometry.dispose();
-      (Array.isArray(child.material)
-        ? child.material
-        : [child.material]
-      ).forEach((material) => material.dispose());
-    }
-  });
-}
+export { disposeMeshes } from "./scene-resources";

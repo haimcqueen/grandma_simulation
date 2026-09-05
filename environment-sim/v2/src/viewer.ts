@@ -8,7 +8,10 @@ import { scenarioObjects } from "./environment";
 import type { Environment, WorldAsset } from "./contracts";
 import { floorHeightAt } from "./navigation-grid";
 import { loadAnimatedResident, type ResidentAssets } from "./animated-resident";
+import { loadRobotResident } from "./robot-resident";
 import type { Simulation } from "./simulation";
+import { postures, type Posture } from "./posture";
+import { defaultRobotAssets, type RobotAsset } from "./robot-assets";
 
 export class Viewer {
   readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -31,12 +34,13 @@ export class Viewer {
   world?: Awaited<ReturnType<typeof loadWorld>>;
   mode: "fixture" | "world" | "world-simulation" = "fixture";
   readonly navigationMap = new THREE.Group();
-  animatedResident?: Awaited<ReturnType<typeof loadAnimatedResident>>;
-  view: "overview" | "interior" | "follow" = "overview";
+  animatedResident?: Awaited<ReturnType<typeof loadAnimatedResident | typeof loadRobotResident>>;
+  view: "overview" | "interior" | "follow" | "first" = "overview";
   debugVisible = false;
   worldDepth = true;
   private revision = -1;
   private loadRevision = 0;
+  private residentRevision = 0;
   private resizeObserver: ResizeObserver;
   private spark?: SparkRenderer;
   private worldAsset?: WorldAsset;
@@ -153,6 +157,7 @@ export class Viewer {
   }
   setView(view: Viewer["view"]) {
     this.view = view;
+    this.controls.enabled = view !== "first";
     if (this.mode === "world-simulation") {
       this.camera.fov = 65;
       if (view === "overview") {
@@ -185,9 +190,15 @@ export class Viewer {
     parent.add(this.resident.root, this.dynamic, this.route, this.debug, this.destinations);
   }
   async loadResident(assets: ResidentAssets) {
-    const revision = this.loadRevision;
-    const resident = await loadAnimatedResident(assets);
-    if (revision !== this.loadRevision) { resident.dispose(); return; }
+    return this.replaceResident(() => loadAnimatedResident(assets));
+  }
+  async loadRobot(posture: Posture = "grandma", asset: RobotAsset = defaultRobotAssets[postures[posture].asset as keyof typeof defaultRobotAssets]) {
+    return this.replaceResident(() => loadRobotResident(posture, asset));
+  }
+  private async replaceResident(load: () => Promise<NonNullable<Viewer["animatedResident"]>>) {
+    const revision = ++this.residentRevision;
+    const resident = await load();
+    if (revision !== this.residentRevision) { resident.dispose(); return; }
     this.animatedResident?.dispose();
     disposeMeshes(this.resident.root);
     this.resident.root.clear();
@@ -279,7 +290,11 @@ export class Viewer {
       new THREE.Vector3(0, 1, 0),
       simulation.heading,
     );
-    this.resident.root.quaternion.slerp(desired, 0.18);
+    if (!simulation.paused) this.resident.root.quaternion.slerp(desired, 0.18);
+    if (this.animatedResident && "setMotion" in this.animatedResident)
+      this.animatedResident.setMotion(simulation.posture, simulation.gaitPhase, simulation.hunch, simulation.skin);
+    if (this.animatedResident && "setFall" in this.animatedResident)
+      this.animatedResident.setFall(simulation.fall);
     if (this.animatedResident)
       this.animatedResident.update(
         simulation.time,
@@ -333,13 +348,34 @@ export class Viewer {
     this.route.geometry.attributes.position.needsUpdate = true;
     this.route.geometry.setDrawRange(0, Math.min(points.length, 4096));
     this.route.visible = simulation.route.length > 0;
+    this.resident.root.visible = this.mode !== "world" && this.view !== "first";
+    this.camera.up.set(0, 1, 0);
+    if (this.mode !== "world" && this.view === "first") {
+      const eyeHeight = this.animatedResident?.metadata.height ?? 1.6;
+      this.camera.position.set(simulation.position.x,
+        floorHeightAt(this.environment, simulation.position) + eyeHeight * 0.9,
+        simulation.position.z);
+      this.controls.target.copy(this.camera.position).add(new THREE.Vector3(
+        Math.sin(simulation.heading), -0.08, Math.cos(simulation.heading),
+      ));
+      if (this.animatedResident && "robot" in this.animatedResident) {
+        const robot = this.animatedResident.robot;
+        robot.getEyePosition(this.camera.position);
+        const orientation = robot.root.getWorldQuaternion(new THREE.Quaternion());
+        this.camera.up.set(0, 1, 0).applyQuaternion(orientation);
+        this.controls.target.copy(this.camera.position).add(new THREE.Vector3(0, 0, 1).applyQuaternion(orientation));
+      }
+      this.camera.lookAt(this.controls.target);
+    }
     if (this.mode !== "world" && this.view === "follow") {
       const target = new THREE.Vector3(
         simulation.position.x,
         floorHeightAt(this.environment, simulation.position) + 1.1,
         simulation.position.z,
       );
-      const desiredCamera = target.clone().add(new THREE.Vector3(0, 0.55, 1.8));
+      const desiredCamera = target.clone().add(new THREE.Vector3(
+        -Math.sin(simulation.heading) * 1.8, 0.55, -Math.cos(simulation.heading) * 1.8,
+      ));
       if (this.mode === "world-simulation" && this.world) {
         const direction = desiredCamera.clone().sub(target);
         const ray = new THREE.Raycaster(target, direction.clone().normalize(), 0, direction.length());
@@ -349,7 +385,7 @@ export class Viewer {
       this.camera.position.lerp(desiredCamera, 0.08);
       this.controls.target.lerp(target, 0.08);
     }
-    this.controls.update();
+    if (this.view !== "first") this.controls.update();
     if (this.mode === "fixture") {
       this.renderer.autoClear = true;
       this.renderer.render(this.scene, this.camera);
@@ -369,6 +405,7 @@ export class Viewer {
   }
   dispose() {
     this.loadRevision++;
+    this.residentRevision++;
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.world?.dispose();

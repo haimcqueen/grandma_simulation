@@ -36,6 +36,9 @@ export type Scenario = "clear" | "cart" | "blocked";
 export type SimulationEvent = {
   type:
     | "ready"
+    | "manualControlStarted"
+    | "fallStarted"
+    | "fallCompleted"
     | "routeStarted"
     | "routeReplanned"
     | "routeBlocked"

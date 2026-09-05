@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 5174",
+    "dev": "vite --host 127.0.0.1 --port 5174 --strictPort",
     "build": "tsc --noEmit && vite build",
     "fetch-sample": "node scripts/fetch-sample.mjs",
     "probe": "node scripts/probe.mjs",
@@ -13,7 +13,10 @@
     "test:environment": "node scripts/test-environment.mjs",
     "fetch-world": "node scripts/fetch-world.mjs",
     "test:tantau": "node scripts/test-tantau.mjs",
-    "test:combined": "node scripts/test-combined.mjs"
+    "test:combined": "node scripts/test-combined.mjs",
+    "test:keyboard": "node scripts/test-keyboard.mjs",
+    "test:falls": "node scripts/test-room-falls.mjs",
+    "test:unitree": "node scripts/test-unitree.mjs"
   },
   "dependencies": {
     "@sparkjsdev/spark": "2.1.0",

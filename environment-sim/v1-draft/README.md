@@ -1,5 +1,15 @@
 # Tantau · House lab
 
+## Situation-specific falls and keyboard stairs
+
+**Fall animations** now offers five authored sequences: balcony drop, backward patio slip, forward rug trip, sideways loss of balance, and a tumble down the lower stair flight. Each has its own timing, travel direction, torso rotation, and limb pose. Select a scene, then **Play / replay fall**; normal/half/quarter speed, pause and reset work for every scene. Explicit playback clears the passage scenario and places the character at the scene's authored start. These ground-floor demonstrations support articulated bipeds and the rigid grandma figurine; quadrupeds remain excluded. Patio entry still has its separate opt-in trigger. The new rug, sideways and stair sequences are explicit demos, not automatic hazard detection.
+
+Use **V / First person** or **F / Third person**, then choose the destination floor to walk there automatically. To control stair progress from the keyboard, walk within 0.8 m of either stair entrance, face into the flight, and hold **W / ↑**. The character aligns with the stair route; continuing to hold forward moves along it and releasing stops. Steering is guided through the turn while on the stairs. Reset cancels traversal. Third person now follows the character on the staircase instead of switching to a fixed external stair camera. Camera buttons and V/F can be used during movement or while paused.
+
+`src/robot/fall.ts` exports `FALL_SCENARIOS`, `situationFrame`, `fallOrientation`, and `poseFall`. `Simulation` owns progression; rendering samples these functions for both robot and figurine poses. `manualStairs` and `setStairInput` handle keyboard stair progress in the existing fixed-step loop. Movements remain authored animations without ragdoll, balance simulation or per-tread foot-contact IK.
+
+`node tests/situations.browser.mjs` checks automatic and keyboard stair traversal across both cameras, release/resume, all five fall variants, pause/replay/reset, the figurine, and mobile overflow. Use `BASE_URL` to target the running v1 app.
+
 An interactive two-floor house prototype. Select a destination, place an obstruction, and watch a fictional resident detour or report a blocked route.
 
 ## Run

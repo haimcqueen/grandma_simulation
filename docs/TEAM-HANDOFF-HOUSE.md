@@ -1,5 +1,27 @@
 # Team handoff: house visuals, upstairs, stairs, and replaceable assets
 
+**Collaborators:** start with the [Unitree integration and reuse guide](UNITREE-COLLABORATOR-GUIDE.md).
+
+## Current app correction: use realistic v2
+
+The user clarified that all Unitree work belongs in `environment-sim/v2/`, inside the existing World Labs room. **http://127.0.0.1:5174/** now serves v2. An old v1 server on that IPv4 address was stopped; a separate legacy app may still answer IPv6 localhost. Use the explicit IPv4 address.
+
+V2 now reuses G1/H1/Go2 assets, articulated walking/crawl/trot, body presets, posture intensity, appearance cycling, first/third-person views, arrow/WASD control and slow playback. Its room-local fall adapter supports forward/backward/sideways demos with pause/replay/reset. See the [v2 README](../environment-sim/v2/README.md) and [v2 handoff](implementation/v2/README.md) for current contracts. The v1 changes below remain in the workspace, but v1 is no longer the target app for this work.
+
+**Outstanding:** the realistic room has no registered staircase or second floor. Do not imply that v1's floor-plan staircase works in the World Labs asset. It needs environment reconstruction, collider registration and a navigation transition. Biped stair/balcony falls are not exposed in v2 until their supporting environment exists.
+
+## Follow-up: fall situations and first/third-person stair controls
+
+The v1 app now has five authored fall scenarios: `balcony`, `patio` (backward slip), `trip` (forward rug trip), `sideways`, and `stairs` (lower-flight tumble). `src/robot/fall.ts` owns the shared scenario catalogue, timing, relative movement tracks and orientation functions. The sidebar is generated from that catalogue. `Simulation.playFall` clears the passage scenario and starts at the chosen scene's authored position; `advance` samples its track. Explicit demos remain ground-floor only and reject quadrupeds. The existing opt-in patio trigger remains available; other scenarios are not automatically detected hazards.
+
+The default `poseFall` kind remains forward/trip to preserve callers that omit the new final kind argument. `scene.ts` passes the actual kind for each robot and uses `fallOrientation` for the rigid figurine. Do not restore a generic forward-pitch-only figurine fall: backward, sideways and tumbling tracks now differ. Stair support elevation follows the lower flight and reaches zero before settling at its foot. These remain authored animations, not contact physics or injury predictions.
+
+Keyboard stair traversal now activates when normal forward movement approaches either `STAIR_ENTRY` within 0.8 m while facing the flight (toward -X). `requestFloor(level, true)` marks it as keyboard-controlled; the application supplies `setStairInput` every fixed step. Holding W/↑ advances, release stops translation, and the turn is guided. On completion ordinary manual movement resumes. `requestFloor(level)` still provides automatic traversal through the floor selector. Camera modes are independent of both mechanisms. Third person now follows the character during stair traversal; the earlier fixed external staircase camera was removed. V/F update the interface immediately.
+
+Follow-up checks: the production build and the focused 32-test fall/floor/manual/gait suite pass. `tests/situations.browser.mjs` also passed: first/third-person traversal, camera changes, keyboard entry/release/resume, five falls, pause/replay/reset, figurine playback, mobile layout and no browser page errors. Captured stair views and fall poses were visually reviewed. The pre-existing randomized swarm threshold is still outside this change and failed on the latest full-suite run; it was not weakened.
+
+This follow-up changes `environment-sim/v1-draft/`. Parallel `environment-sim/v2/` and root README work was present in the shared workspace and was not authored or reverted by this agent. Check those newer documents for the separate photo-guided environment's status; the earlier external-generation/access notes below describe the original environment session, not necessarily subsequent team work.
+
 Updated September 5, 2026. This records the completed environment work and the final user direction: keep the house interactive, recreate the second floor from the supplied plan, let the robot walk up/down stairs, and make visual components replaceable with realistic assets.
 
 ## Start here

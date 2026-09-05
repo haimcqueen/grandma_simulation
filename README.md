@@ -1,6 +1,8 @@
 # House Lab
 
-A browser-based house simulation with a photo-guided World Labs environment, a walking placeholder resident, route planning and editable passage scenarios. The photo-guided room and walking demo is in **`environment-sim/v2/`**. The team's character, garden and upstairs work remains in **`environment-sim/v1-draft/`**; v2 supplies a working environment integration for that work.
+**Collaborators:** start with the [Unitree integration and reuse guide](docs/UNITREE-COLLABORATOR-GUIDE.md).
+
+A browser-based house simulation with a photo-guided World Labs environment, the team's walking Unitree G1 robot, route planning and editable passage scenarios. The photo-guided room and robot demo is in **`environment-sim/v2/`**. V2 includes the team's Unitree G1/H1/Go2 bodies, articulated gait, arrow-key controls, first/third-person cameras and ground-level fall demos. Garden and upstairs reconstruction remain in **`environment-sim/v1-draft/`** and are not yet integrated into the realistic world.
 
 ## Quick start
 
@@ -12,7 +14,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://localhost:5174/**. The room and collider load from public runtime URLs without Mint authentication or API keys. The resident starts walking automatically. Choose a destination, add a cart or barrier, pause/reset, or switch to the follow camera.
+Open **http://127.0.0.1:5174/**. The room and collider load from public runtime URLs without Mint authentication or API keys. The resident starts walking automatically. Choose a destination, add a cart or barrier, pause/reset, or switch to the follow camera.
 
 ## Download the house for local use
 
@@ -42,11 +44,11 @@ Prefer `npm run fetch-world`: it also creates the local manifest. Both files are
 - [Shared team foundations](docs/shared-specs/draft/TEAM-FOUNDATIONS.md)
 - [Team character and multi-floor app](environment-sim/v1-draft/README.md)
 
-The character is a replaceable placeholder. The generated room approximates listing photos; dimensions and unseen regions are not surveyed. No full biomechanical model or automatic hazard detection is claimed.
+The Unitree robot is replaceable through the resident API. The generated room approximates listing photos; dimensions and unseen regions are not surveyed. No full biomechanical model or automatic hazard detection is claimed.
 
 ## Bringing the room into the team app
 
-V2 uses Spark to render RAD splats. The v1 GLB visual-slot loader cannot render the RAD directly, and the collider GLB is not a textured house. Reuse v2's `world-loader.ts` and rendering layers when integrating with v1, and reconcile coordinate transforms/navigation before moving v1 characters into this room. V2 does not yet incorporate the newly added v1 robot, garden or upstairs features. See [the existing team handoff](docs/TEAM-HANDOFF-HOUSE.md) for those modules.
+V2 uses Spark to render RAD splats. The v1 GLB visual-slot loader cannot render the RAD directly, and the collider GLB is not a textured house. Reuse v2's `world-loader.ts` and rendering layers when integrating with v1, and reconcile coordinate transforms/navigation before moving v1 characters into this room. V2 incorporates the Unitree bodies and room-local fall poses; the garden and upstairs still require integration. See [the existing team handoff](docs/TEAM-HANDOFF-HOUSE.md) for those modules.
 
 ## Checks
 

@@ -57,11 +57,11 @@ Programs are JSON data, not evaluated JavaScript. Validation accepts 1–256 ste
 
 Unit checks cover arbitrary targets, obstacle replanning, cross-floor programs, paused waits, retries/manual cancellation, staircase entry/reversal, wall sliding, malformed input and bounded zero-wait loops. Browser checks exercise real canvas clicks, Shift-click waypoints, wait editing, Stop here, WASD takeover on stairs, reversal and mobile layout.
 
-Run `npm run test:movement`, `npm run test:house`, and `npm test`. With Vite running, use `npm run test:movement:browser` and `npm run test:house:browser`. The latest remote manual walkthrough and hazard/recovery changes were merged locally from `797b1f7`. The detector now follows the active floor, transfer motion suppresses automatic falls, and hazard recovery resumes arbitrary point targets as well as named destinations. The default walkthrough keeps hazards and markers disabled on both floors. These changes remain on the feature branch pending push approval.
+Run `npm run test:movement`, `npm run test:house`, and `npm test`. With Vite running, use `npm run test:movement:browser` and `npm run test:house:browser`. The latest remote manual walkthrough and hazard/recovery changes were merged locally from `a78d2e9`. The detector now follows the active floor, transfer motion suppresses automatic falls, and hazard recovery resumes arbitrary point targets as well as named destinations. The default walkthrough keeps hazards and markers disabled on both floors. These changes remain on the feature branch pending push approval.
 
 ## Review and acceptance
 
-The local feature branch is `feature/tantau-upstairs`. It includes an implementation commit and a separate merge/integration commit to preserve the teammate's history. No force push or remote publication is part of this handoff.
+The local feature branch is `feature/tantau-upstairs`. It includes an implementation commit and merge commits for the teammate's walkthrough/hazards and subsequent posture tuning to preserve the teammate's history. No force push or remote publication is part of this handoff.
 
 Recommended two-minute review:
 
@@ -71,3 +71,11 @@ Recommended two-minute review:
 4. Use Example to load a cross-floor program. Edit the JSON and export it for another agent.
 
 No grandma mesh replacement was bundled into this change. That remains a separate adapter task; the downloaded model has only an idle clip. The spatial navigation region is still conservative, and stairs constrain manual travel to a checked connector. Additional upstairs rooms and foot-contact physics remain future work.
+
+## Recorded integration checks
+
+The shared simulation/hazard suite (27), house suite (5) and movement suite (8) pass: **40 tests**. The production build passes; Spark/Three still emit the existing large-bundle advisory. Actual-asset stair clearance passes at 189 sampled positions.
+
+Browser suites passed for flexible movement, the connected house studio, the connected simple walkthrough, the original manual walkthrough, combined routing/occlusion, cutaways, keyboard controls, hazard alerts, automatic fall/recovery, and Unitree model switching. The final focused rerun also passed with the newest remote posture tuning: production build, all 40 unit/state tests, Unitree switching, the connected walkthrough and room-fall browser checks.
+
+The most recent remote snapshot is `a78d2e9` (grandma posture tuning). Its character implementation is preserved. Generated assets are referenced by public manifests and fetched with checksums; source assets are not embedded in Git. Documentation, example commands, tests and calibration data are committed in the repository rather than the private preparation workspace.

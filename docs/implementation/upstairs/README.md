@@ -2,7 +2,7 @@
 
 Implemented locally on 2026-09-05 in `environment-sim/v2/`. This milestone connects the existing photo-guided ground-floor great room to a newly generated primary bedroom through an authored U-shaped stair and landing. Other upstairs bedrooms, bathrooms and the complete hall are not included.
 
-Integrated the teammate's manual walkthrough and hazard/recovery changes from `origin/main` at `797b1f7` on local branch `feature/tantau-upstairs`. Commits are prepared locally for review; pushing requires the user's approval. See the [movement handoff](../movement/README.md) for the current controls and reusable scripting API.
+Integrated the teammate's manual walkthrough and hazard/recovery changes from `origin/main` at `a78d2e9` on local branch `feature/tantau-upstairs`. Commits are prepared locally for review; pushing requires the user's approval. See the [movement handoff](../movement/README.md) for the current controls and reusable scripting API.
 
 ## Run and share
 
@@ -75,7 +75,7 @@ Do not align new rooms from one screenshot alone. Inspect collider/appearance fr
 - 27 shared simulation/hazard tests, five house tests and eight movement tests passed, including every shipped destination pair, continuous ascent/descent, independent scenario state, blocked approach, pause/reset and invalid endpoint rejection.
 - `npm run test:stairs`: 189 sampled capsule positions along the authored route against both transformed generated colliders, excluding explicit cutouts; no contacts. This is a sampled static clearance check, not whole-body physics validation.
 - `npm run test:house:browser`: actual remote bedroom and ground assets, return journey, floor-scoped ceiling heights, camera modes, floor visibility, obstruction, export, mobile layout and fixture switching.
-- Existing walkthrough, cutaway, combined, keyboard, hazard, recovery and Unitree browser suites are included in the final integration checks. See the movement handoff for the recorded result.
+- Existing walkthrough, cutaway, combined, keyboard, hazard, recovery, Unitree and room-fall browser suites passed. See the movement handoff for the recorded result.
 - All four assets downloaded successfully; byte counts and SHA-256 recorded in `public/environment/house/checksums.json`.
 
 Run `npm run build`, `npm test`, `npm run test:house`; with Vite running, run `npm run test:house:browser`. Download assets with `npm run fetch-house` before `npm run test:stairs`. Re-bake navigation and validate endpoints whenever transforms or geometry change.

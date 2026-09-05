@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-05",
+  "remoteMain": "a78d2e9",
+  "branch": "feature/tantau-upstairs",
+  "build": "passed",
+  "stateTests": {
+    "shared": 27,
+    "house": 5,
+    "movement": 8,
+    "total": 40,
+    "result": "passed"
+  },
+  "browserSuites": [
+    "movement",
+    "house studio",
+    "house walkthrough",
+    "original walkthrough",
+    "combined",
+    "cutaway",
+    "keyboard",
+    "hazards",
+    "recovery",
+    "unitree",
+    "room falls"
+  ],
+  "browserResult": "passed",
+  "stairClearance": {
+    "samples": 189,
+    "contacts": 0,
+    "result": "passed"
+  },
+  "limitations": [
+    "Conservative room navigation coverage",
+    "Authored centerline stair travel; no foot IK or balance physics",
+    "Only the primary bedroom represents upstairs in this milestone",
+    "Grandma mesh adapter remains a separate task"
+  ],
+  "publication": "Local commits only; awaiting user approval to push"
+}

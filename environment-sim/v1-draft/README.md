@@ -98,3 +98,8 @@ The upstairs recreation follows the user-supplied full floor-plan image: three b
 Under **About this experiment**, **Download this floor's 3D layout (.glb)** exports a coarse geometry reference in metres with full-height walls. This is intended as input to World Labs Chisel or Blender; it omits rendered surface details, characters, routes, and scenario obstructions. Upper-floor exports use local y=0 at the upper floor, whereas the interactive scene places upstairs at y=3.06. See [the design and generation notes](../../docs/house-design.md) for the workflow.
 
 Validation: `tests/floors.test.ts` covers upstairs route clearance, floor isolation, continuous ascent/descent, mid-flight pause, blocked approaches, and reset. `node tests/floors.browser.mjs` exercises the controls, stair animation views, upstairs arrival, return downstairs, GLB download/structure, and mobile layout with the development server running.
+
+
+## Replaceable environment visuals
+
+`src/visualConfig.ts` selects the background, house shells, furniture, and staircase assets. Each furniture object has a stable visual slot separate from its navigation footprint. Realistic GLBs can replace individual placeholders or an unfurnished floor shell. The current procedural visuals remain available as fallbacks, including after failed loads. See [ASSETS.md](./ASSETS.md) for configuration examples, coordinates, supported formats, and the runtime replacement API.

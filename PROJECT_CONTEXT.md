@@ -1,5 +1,7 @@
 # House hazard simulation — full project context
 
+For the newer house visuals, second floor, continuous stair traversal, and replaceable asset API, read [the September 5 environment handoff](docs/TEAM-HANDOFF-HOUSE.md). It supersedes the ground-floor-only and no-stairs descriptions below.
+
 Portable context for an LLM or a new teammate. Written 2026-09-05, mid-hackathon
 (Spatial Intelligence + Generative 3D, San Francisco; submissions 18:00).
 

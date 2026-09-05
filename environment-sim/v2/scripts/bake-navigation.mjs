@@ -6,7 +6,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 
 // Usage: npx tsx scripts/bake-navigation.mjs <world.json> <collider.glb> <calibration.json> <output.json>
-const [worldPath, colliderPath, calibrationPath, outputPath] =
+const [worldPath, colliderPath, calibrationPath, outputPath, reportPath] =
   process.argv.slice(2);
 if (!outputPath)
   throw new Error(
@@ -60,6 +60,9 @@ const columns = Math.ceil((maximumX - minimumX) / cell),
   rows = Math.ceil((maximumZ - minimumZ) / cell);
 const walkable = Array(columns * rows).fill(0),
   floorHeights = Array(columns * rows).fill(floorY);
+// Optional diagnostics use the same decisions as the bake, without relaxing collision.
+const reasons = Array(columns * rows).fill("no-floor");
+const contacts = [];
 const ray = new THREE.Raycaster();
 ray.firstHitOnly = false;
 const downward = new THREE.Vector3(0, -1, 0);
@@ -87,7 +90,7 @@ for (let z = 0; z < rows; z++)
     if (reservedStairwells.some(layout => {
       const local = new THREE.Vector3(px-layout.origin.x, 0, pz-layout.origin.z).applyAxisAngle(new THREE.Vector3(0,1,0), -layout.yaw);
       return local.x > .18 && local.x < layout.approach+layout.run+layout.width/2+.16 && local.z > -layout.width/2-.16 && local.z < layout.separation+layout.width/2+.16;
-    })) continue;
+    })) { reasons[index] = "stair-controller"; continue; }
     const ground = getFloor(px, pz);
     if (ground === null) continue;
     floorHeights[index] = Number(ground.toFixed(4));
@@ -103,7 +106,7 @@ for (let z = 0; z < rows; z++)
         break;
       }
     }
-    if (!supported) continue;
+    if (!supported) { reasons[index] = "unsupported-edge-or-height-change"; continue; }
     capsule.start.set(px, ground + radius, pz);
     capsule.end.set(px, ground + height - radius, pz);
     capsuleBounds
@@ -120,11 +123,14 @@ for (let z = 0; z < rows; z++)
             return false;
           const point = new THREE.Vector3();
           const distance = triangle.closestPointToSegment(capsule, point);
-          return distance < inflated && (!generated.has(mesh) || !(world.cutouts ?? []).some(cut => cutoutContains(cut, point)));
+          const blocked = distance < inflated && (!generated.has(mesh) || !(world.cutouts ?? []).some(cut => cutoutContains(cut, point)));
+          if (blocked && reportPath) contacts.push({ x: px, z: pz, floorY: ground, distance, point: point.toArray(), source: generated.has(mesh) ? "generated-collider" : "authored-structure" });
+          return blocked;
         },
       }),
     );
     if (!obstructed) walkable[index] = 1;
+    reasons[index] = obstructed ? "body-collision" : "walkable";
   }
 const grid = {
   origin: { x: minimumX, z: minimumZ },
@@ -137,6 +143,9 @@ const grid = {
   floorHeights,
 };
 await writeFile(outputPath, JSON.stringify(grid));
+if (reportPath) await writeFile(reportPath, JSON.stringify({ worldPath, calibrationPath,
+  counts: reasons.reduce((counts, reason) => { counts[reason] = (counts[reason] ?? 0) + 1; return counts; }, {}),
+  origin: grid.origin, columns, rows, cell, radius, inflatedRadius: inflated, reasons, contacts }, null, 2));
 console.log(
   JSON.stringify({
     columns,

@@ -5,10 +5,15 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:5174/?house=1');await page.waitForFunction(()=>document.querySelector('#app').dataset.ready==='true',{},{timeout:120000});
  assert.equal(await page.locator('aside').count(),0);assert.equal(await page.evaluate(()=>window.houseLab.simulation.manual),true);
+ await page.locator('[data-view="map"]').click();
+ assert.deepEqual(await page.evaluate(()=>window.houseLab.viewer.mapConnections.children.flatMap(group=>group.children.map(link=>link.userData.label))),['Stairs up']);
+ await page.screenshot({path:'.artifacts/upstairs/map-stairs-ground.png'});
  await page.locator('#walk-floor').click();
  await page.evaluate(()=>{const {simulation:s,movement:m}=window.houseLab;for(let i=0;i<12000&&m.status==='running';i++){s.advance(1/60);m.advance();}});
  await page.waitForFunction(()=>window.houseLab.viewer.environment.id===window.houseLab.simulation.environment.id);
  assert.equal(await page.evaluate(()=>window.houseLab.simulation.floorId),'upper');
+ assert.deepEqual(await page.evaluate(()=>window.houseLab.viewer.mapConnections.children.flatMap(group=>group.children.map(link=>link.userData.label))),['Stairs down']);
+ await page.screenshot({path:'.artifacts/upstairs/map-stairs-upper.png'});
  assert.equal(await page.evaluate(()=>window.houseLab.viewer.destinations.children.length),0);
  assert.equal(await page.evaluate(()=>window.houseLab.viewer.hazards.root.children.length),0);
  await page.locator('[data-view="top"]').click();await page.waitForTimeout(900);await page.screenshot({path:'.artifacts/upstairs/walkthrough-upper.png'});

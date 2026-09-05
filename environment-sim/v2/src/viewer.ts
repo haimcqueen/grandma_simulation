@@ -15,6 +15,7 @@ import type { Simulation } from "./simulation";
 import { postures, type Posture } from "./posture";
 import { defaultRobotAssets, type RobotAsset } from "./robot-assets";
 import { RoomHazardView } from "./hazard-view";
+import { buildHouseMap } from "./house-map";
 
 export class Viewer {
   readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -51,6 +52,7 @@ export class Viewer {
   world?: Awaited<ReturnType<typeof loadWorld>>;
   mode: "fixture" | "world" | "world-simulation" = "fixture";
   readonly navigationMap = new THREE.Group();
+  readonly mapConnections = new THREE.Group();
   animatedResident?: Awaited<ReturnType<typeof loadAnimatedResident | typeof loadRobotResident>>;
   view: "overview" | "interior" | "follow" | "first" | "top" | "side" | "map" = "overview";
   debugVisible = false;
@@ -94,6 +96,7 @@ export class Viewer {
     this.topControls.enabled = false;
     this.topScene.background = new THREE.Color("#edece5");
     this.topScene.add(new THREE.HemisphereLight(0xfff9e8, 0x7b8b7a, 2.3));
+    this.topScene.add(this.mapConnections);
     this.controls.enableDamping = true;
     this.controls.minDistance = 0.1;
     this.controls.maxDistance = 32;
@@ -255,6 +258,7 @@ export class Viewer {
       const bounds = this.mode === "world-simulation"
         ? new THREE.Box3().setFromObject(this.navigationMap)
         : new THREE.Box3().setFromObject(this.fixture.root);
+      if (this.house) bounds.union(new THREE.Box3().setFromObject(this.mapConnections));
       if (bounds.isEmpty()) bounds.setFromCenterAndSize(new THREE.Vector3(this.environment.floor.x, 0, this.environment.floor.z), new THREE.Vector3(this.environment.floor.width, 1, this.environment.floor.depth));
       const center = bounds.getCenter(new THREE.Vector3());
       const size = bounds.getSize(new THREE.Vector3());
@@ -362,9 +366,14 @@ export class Viewer {
       cells.setMatrixAt(index++, matrix);
     });
     this.navigationMap.add(cells);
+    disposeMeshes(this.mapConnections, true);
+    this.mapConnections.clear();
+    const floor = this.house?.floors.find(floor => floor.environment.id === environment.id);
+    if (this.house && floor) this.mapConnections.add(buildHouseMap(this.house, floor.id));
     this.setView("interior");
   }
   private clearHouse() {
+    disposeMeshes(this.mapConnections, true); this.mapConnections.clear();
     for (const entry of this.houseWorlds.values()) {
       this.worldScene.remove(entry.world.splats);
       this.overlayScene.remove(entry.world.depth, entry.world.wire);

@@ -264,7 +264,8 @@ export class Viewer {
       const size = bounds.getSize(new THREE.Vector3());
       this.topSpan = Math.max(size.z, size.x / this.camera.aspect, 3) * 1.35;
       this.topCamera.zoom = 1;
-      this.topCamera.position.set(center.x, bounds.max.y + 25, center.z);
+      // Avoid the OrbitControls pole singularity when reframing on a floor change.
+      this.topCamera.position.set(center.x, bounds.max.y + 25, center.z + 0.001);
       this.topControls.target.set(center.x, this.environment.floorY, center.z);
       this.resizeTopCamera();
       this.topControls.update();

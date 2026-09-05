@@ -1,5 +1,7 @@
 # V2 combined simulation handoff
 
+**Hazards are integrated:** see the [hazard merge and reuse notes](../../HAZARD-INTEGRATION.md) for zone configuration, profiles, popups and validation.
+
 **Collaborators:** start with the [Unitree integration and reuse guide](../../UNITREE-COLLABORATOR-GUIDE.md).
 
 Updated 2026-09-05. Implemented at the user's request: combine the realistic house with the v1-style walking simulation so the character teammate can extend a working scene.

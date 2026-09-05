@@ -9,6 +9,7 @@ import { isWalkable, scenarioObjects } from "./environment";
 import { distance, planRoute, segmentClear } from "./navigation";
 import { postures, type Posture } from "./posture";
 import { roomFalls, roomFallFrame, roomFallDuration, type RoomFall, type RoomFallKind } from "./falls";
+import { HazardTracker, conditionForSubject, type HazardProfile } from "./hazards";
 
 export class Simulation {
   readonly characterId = "resident-01";
@@ -26,6 +27,9 @@ export class Simulation {
   hunch = 1;
   skin = "factory";
   playbackSpeed = 1;
+  hazardProfile: HazardProfile = "auto";
+  private readonly hazardTracker: HazardTracker;
+  get pendingHazard() { return this.fall ? null : this.hazardTracker.pendingFor(this.characterId); }
   currentSpeed = 0;
   gaitPhase = 0;
   time = 0;
@@ -34,6 +38,9 @@ export class Simulation {
   events: SimulationEvent[] = [];
   profile: MovementProfile = { speed: postures.grandma.speed, radius: 0.28, height: 1.7 };
   constructor(readonly environment: Environment) {
+    this.hazardTracker = new HazardTracker({ zones: environment.hazardZones ?? [] });
+    this.hazardTracker.onEnter = (_id, hit) => this.record("hazardEncountered",
+      `${hit.zone.room}: ${hit.hazard.object} · ${hit.severity} (${hit.condition} scenario).`, [this.characterId, hit.zone.hazardId]);
     this.position = { ...environment.spawn };
     this.fallOrigin = { ...this.position };
     this.record("ready", "Resident ready. Choose a destination.", [
@@ -70,6 +77,17 @@ export class Simulation {
     this.posture = posture;
     this.profile.speed = postures[posture].speed;
     this.currentSpeed = 0;
+    this.updateHazards();
+  }
+  setHazardProfile(profile: HazardProfile) {
+    this.hazardProfile = profile;
+    this.updateHazards();
+  }
+  dismissHazard() { this.hazardTracker.dismiss(this.characterId); }
+  private updateHazards() {
+    const condition = this.hazardProfile === "auto" ? conditionForSubject(this.posture)
+      : this.hazardProfile === "off" ? null : this.hazardProfile;
+    this.hazardTracker.update(this.characterId, this.position, this.fall ? null : condition);
   }
   setManual() {
     if (this.fall) return;
@@ -114,6 +132,7 @@ export class Simulation {
       this.distance += actual;
       this.gaitPhase += actual * Math.sign(travel) / motion.strideLength + Math.abs(rotation) * 0.3;
       this.status = actual > 0.000001 || Math.abs(rotation) > 0.000001 ? "walking" : "idle";
+      this.updateHazards();
     }
   }
   private replan(changed: boolean) {
@@ -199,7 +218,7 @@ export class Simulation {
       }
       return;
     }
-    if (this.manual || this.status !== "walking") return;
+    if (this.manual || this.status !== "walking") { this.updateHazards(); return; }
     let remaining = this.profile.speed * delta;
     while (remaining > 0 && this.route.length) {
       const next = this.route[0],
@@ -208,7 +227,7 @@ export class Simulation {
         this.route.shift();
         continue;
       }
-      const travel = Math.min(length, remaining),
+      const travel = Math.min(length, remaining, 0.15),
         dx = next.x - this.position.x,
         dz = next.z - this.position.z;
       this.heading = Math.atan2(dx, dz);
@@ -218,6 +237,7 @@ export class Simulation {
       };
       this.distance += travel;
       this.gaitPhase += travel / postures[this.posture].motion.strideLength;
+      this.updateHazards();
       remaining -= travel;
       if (travel === length) this.route.shift();
     }
@@ -234,6 +254,7 @@ export class Simulation {
     if (postures[this.posture].crawl) return false;
     const scenario = roomFalls.find(fall => fall.id === kind);
     if (!scenario) return false;
+    this.hazardTracker.reset(this.characterId);
     if (this.fall) this.position = { ...this.fallOrigin };
     this.fallOrigin = { ...this.position };
     this.fall = { kind, elapsed: 0 };
@@ -247,6 +268,7 @@ export class Simulation {
     return true;
   }
   reset() {
+    this.hazardTracker.reset(this.characterId);
     this.fall = null;
     this.manual = false;
     this.currentSpeed = 0;
@@ -283,6 +305,8 @@ export class Simulation {
       hunch: this.hunch,
       skin: this.skin,
       playbackSpeed: this.playbackSpeed,
+      hazardProfile: this.hazardProfile,
+      pendingHazard: this.pendingHazard,
       currentSpeed: this.currentSpeed,
       gaitPhase: this.gaitPhase,
       time: this.time,

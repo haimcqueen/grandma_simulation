@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "fetch-sample": "node scripts/fetch-sample.mjs",
     "probe": "node scripts/probe.mjs",
-    "test": "tsx --test scripts/test-simulation.mjs",
+    "test": "tsx --test scripts/test-simulation.mjs scripts/test-hazards.mjs",
     "test:browser": "node scripts/test-browser.mjs",
     "test:environment": "node scripts/test-environment.mjs",
     "fetch-world": "node scripts/fetch-world.mjs",
@@ -16,7 +16,8 @@
     "test:combined": "node scripts/test-combined.mjs",
     "test:keyboard": "node scripts/test-keyboard.mjs",
     "test:falls": "node scripts/test-room-falls.mjs",
-    "test:unitree": "node scripts/test-unitree.mjs"
+    "test:unitree": "node scripts/test-unitree.mjs",
+    "test:hazards": "node scripts/test-hazards-browser.mjs"
   },
   "dependencies": {
     "@sparkjsdev/spark": "2.1.0",

@@ -557,3 +557,27 @@ footer {
 .source-note a { color: #3e6044; }
 .inspection .scene-heading h1 { font-size: 27px; margin: 8px 0; letter-spacing: -1px; }
 .inspection .scene-heading { top: 20px; left: 20px; }
+.hazard-popup {
+  position: absolute;
+  z-index: 4;
+  left: 24px;
+  bottom: 116px;
+  width: min(350px, calc(100% - 48px));
+  box-sizing: border-box;
+  padding: 16px 18px;
+  border: 1px solid #c8a56e;
+  border-left: 4px solid #bd7f2e;
+  border-radius: 12px;
+  background: #fffdf5f5;
+  color: #354137;
+  box-shadow: 0 12px 30px #152b2426;
+}
+.hazard-popup[hidden] { display: none; }
+.hazard-popup[data-severity="high"], .hazard-popup[data-severity="critical"] { border-left-color: #b05236; }
+.hazard-popup-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.hazard-popup-top span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+.hazard-popup-top button { border: 0; padding: 5px 8px; background: transparent; color: inherit; }
+.hazard-popup strong { font-size: 14px; }
+.hazard-popup p { font-size: 12px; line-height: 1.5; margin: 8px 0; }
+.hazard-popup small { font-size: 10px; color: #697367; }
+#hazard-controls label.source-note { display: flex; gap: 8px; align-items: center; margin-top: 12px; }

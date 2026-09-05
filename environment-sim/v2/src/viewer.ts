@@ -12,6 +12,7 @@ import { loadRobotResident } from "./robot-resident";
 import type { Simulation } from "./simulation";
 import { postures, type Posture } from "./posture";
 import { defaultRobotAssets, type RobotAsset } from "./robot-assets";
+import { RoomHazardView } from "./hazard-view";
 
 export class Viewer {
   readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -30,6 +31,8 @@ export class Viewer {
   );
   readonly debug = new THREE.Group();
   readonly destinations = new THREE.Group();
+  readonly hazards = new RoomHazardView();
+  hazardPropsVisible = true;
   get asset() { return this.worldAsset; }
   world?: Awaited<ReturnType<typeof loadWorld>>;
   mode: "fixture" | "world" | "world-simulation" = "fixture";
@@ -143,6 +146,8 @@ export class Viewer {
     this.camera.updateProjectionMatrix();
   }
   private refreshDestinationMarkers() {
+    this.hazards.setEnvironment(this.environment);
+    (this.mode === "world-simulation" ? this.overlayScene : this.scene).add(this.hazards.root);
     disposeMeshes(this.destinations);
     this.destinations.clear();
     for (const destination of this.environment.destinations) {
@@ -281,6 +286,7 @@ export class Viewer {
     return true;
   }
   update(simulation: Simulation) {
+    this.hazards.root.visible = this.hazardPropsVisible && this.mode !== "world";
     this.resident.root.position.set(
       simulation.position.x,
       floorHeightAt(this.environment, simulation.position),
@@ -404,6 +410,7 @@ export class Viewer {
     }
   }
   dispose() {
+    this.hazards.dispose();
     this.loadRevision++;
     this.residentRevision++;
     this.resizeObserver.disconnect();

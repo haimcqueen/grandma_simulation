@@ -9,19 +9,20 @@ import { postures, type Posture } from "./posture";
 import { LIVERIES } from "../../v1-draft/src/robot/livery";
 import { roomFalls, roomFallFrame, type RoomFallKind } from "./falls";
 import { createKeyboardControls } from "./keyboard-controls";
+import { conditionForSubject, type HazardProfile } from "./hazards";
 import "./style.css";
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <header><a class="wordmark" href="/">HOUSE<span>LAB</span><i>02</i></a><div class="address">10536 S Tantau Avenue <span>Cupertino, California</span></div><a class="mint-link" href="https://mint.gg/chat/ph76aa258at54gvzs8ytwm5je18dtcpx" target="_blank" rel="noreferrer">World source ↗</a></header>
 <main><section id="viewport"><div class="scene-heading"><div class="eyebrow" id="scene-label">GROUND FLOOR / INTERACTIVE STUDY</div><h1 id="scene-title">A little room<br>to move.</h1><p id="provenance">Authored approximation · listing-inspired materials</p></div>
 <div class="view-controls" aria-label="Camera views"><button data-view="overview" class="active">Overview</button><button data-view="interior">Inside</button><button data-view="follow">Third person</button><button data-view="first">First person</button></div>
-<div id="notice" role="status" hidden></div><div class="scene-footer"><span id="scene-hint">Drag to orbit · Scroll to zoom</span><label><input type="checkbox" id="debug"> Show geometry</label></div></section>
+<div id="hazard-popup" class="hazard-popup" role="status" aria-live="polite" hidden><div class="hazard-popup-top"><span id="hazard-severity"></span><button id="hazard-dismiss" aria-label="Dismiss hazard">✕</button></div><strong id="hazard-object"></strong><p id="hazard-reason"></p><small id="hazard-context"></small></div><div id="notice" role="status" hidden></div><div class="scene-footer"><span id="scene-hint">Drag to orbit · Scroll to zoom</span><label><input type="checkbox" id="debug"> Show geometry</label></div></section>
 <aside><div class="eyebrow">SCENARIO STUDIO</div><h2>Everyday journeys.</h2><p class="intro">Explore how a small change in a room changes the way through it.</p>
 <label class="field-label" for="environment">Environment</label><select id="environment"><option value="fixture">V1-style · authored fixture</option><option value="sample">World Labs · sample inspection</option></select>
 <p class="source-note" id="environment-note">Estimated layout, inspired by the listing. The realistic room is available in the environment selector.</p>
 <div id="simulation-controls"><button id="routine" class="routine-button">▶ Walk around</button><section class="control-section"><div class="section-number">01 <span>Choose a destination</span></div><div class="destinations">${tantauFixture.destinations.map((target, index) => `<button data-destination="${target.id}"><span>0${index + 1}</span>${target.label}<b>↗</b></button>`).join("")}</div></section>
 <section class="control-section"><div class="section-number">02 <span>Change the passage</span></div><div class="segmented"><button data-scenario="clear">Clear</button><button data-scenario="cart">Add cart</button><button data-scenario="blocked">Block</button></div><p id="scenario-description" class="source-note"></p></section>
-<section class="resident-card"><div class="resident-avatar">R</div><div><strong id="resident-name">Unitree G1</strong><small id="resident-model" role="status">Loading robot…</small></div><span class="status-dot"></span></section>
+<section class="control-section" id="hazard-controls"><div class="section-number">HAZARDS <span>Explore nearby objects</span></div><label class="field-label" for="hazard-profile">Scenario profile</label><select id="hazard-profile"><option value="auto">Match body preset</option><option value="elderly">Older-adult scenario</option><option value="toddler">Toddler scenario</option><option value="off">Off</option></select><label class="source-note"><input type="checkbox" id="hazard-props" checked> Show demo hazard objects</label><p id="hazard-profile-note" class="source-note"></p><p class="source-note">Placed demo rug, cable and small objects. Proximity alerts use authored zones and ratings; they do not detect hazards in the room images or trigger falls.</p></section><section class="resident-card"><div class="resident-avatar">R</div><div><strong id="resident-name">Unitree G1</strong><small id="resident-model" role="status">Loading robot…</small></div><span class="status-dot"></span></section>
 <label class="field-label" for="posture">Unitree body & movement</label><select id="posture">${Object.entries(postures).map(([id, preset]) => `<option value="${id}">${preset.label}</option>`).join("")}</select><p class="source-note">Authored movement presets, not a medical model or a rule about older adults.</p>
 <label class="speed-label" for="hunch">Posture intensity <output id="hunch-value">100%</output></label><input id="hunch" type="range" min="0" max="1" step="0.1" value="1"><label class="field-label" for="skin">Robot appearance</label><select id="skin">${LIVERIES.map(skin => `<option value="${skin.id}">${skin.label}</option>`).join("")}</select><p class="source-note">1–5: body presets · [ / ]: posture · K: appearance</p>
 <label class="speed-label" for="speed">Walking speed <output id="speed-value">0.77 m/s</output></label><input id="speed" type="range" min="0.2" max="1.6" step="0.01" value="0.77"><p class="source-note" id="keyboard-help">W / ↑ forward · S / ↓ backward · A/D or ←/→ turn. Keyboard takes over the walking routine. Release to stop; choose a destination to resume routes. F: first person · V: third person.</p>
@@ -113,6 +114,17 @@ document
       (button.onclick = () =>
         viewer.setView(button.dataset.view as Viewer["view"])),
   );
+element("hazard-dismiss").onclick = () => { simulation.dismissHazard(); renderUI(); };
+element<HTMLSelectElement>("hazard-profile").onchange = event => {
+  const select = event.target as HTMLSelectElement;
+  simulation.setHazardProfile(select.value as HazardProfile);
+  select.blur();
+  renderUI();
+};
+element<HTMLInputElement>("hazard-props").onchange = event => {
+  viewer.hazardPropsVisible = (event.target as HTMLInputElement).checked;
+  (event.target as HTMLInputElement).blur();
+};
 element("play-fall").onclick = () => {
   clearKeys();
   routine.stop();
@@ -196,6 +208,7 @@ function replaceSimulation(environment: Environment) {
   next.hunch = simulation.hunch;
   next.skin = simulation.skin;
   next.playbackSpeed = simulation.playbackSpeed;
+  next.setHazardProfile(simulation.hazardProfile);
   simulation = next;
   routine = new WalkingRoutine(simulation);
 }
@@ -325,7 +338,28 @@ const timestamp = (seconds: number) =>
     .toString()
     .padStart(2, "0")}`;
 let lastEvents: unknown;
+let shownHazard: unknown;
 function renderUI() {
+  const hazard = simulation.pendingHazard;
+  const popup = element("hazard-popup");
+  popup.hidden = !hazard || loading || viewer.mode === "world";
+  if (hazard !== shownHazard) {
+    shownHazard = hazard;
+    if (hazard) {
+      popup.dataset.severity = hazard.severity;
+      element("hazard-severity").textContent = `${hazard.severity} · ${hazard.zone.room}`;
+      element("hazard-object").textContent = hazard.hazard.object;
+      element("hazard-reason").textContent = hazard.reason;
+      element("hazard-context").textContent = `Authored ${hazard.condition === "elderly" ? "older-adult" : "toddler"} scenario · proximity alert`;
+    }
+  }
+  element<HTMLSelectElement>("hazard-profile").value = simulation.hazardProfile;
+  const condition = simulation.hazardProfile === "auto" ? conditionForSubject(simulation.posture) : simulation.hazardProfile;
+  element("hazard-profile-note").textContent = !(simulation.environment.hazardZones?.length)
+    ? "No hazard zones are configured for this environment."
+    : !condition ? "This body has no default hazard rating. Select a scenario profile to explore the demo zones."
+      : condition === "off" ? "Proximity alerts are off. Demo objects can remain visible."
+        : `${simulation.environment.hazardZones.length} demo zones · ${condition === "elderly" ? "older-adult" : "toddler"} scenario. Walk toward the kitchen or rear passage to explore.`;
   const canFall = !residentLoading && !postures[simulation.posture].crawl && !!viewer.animatedResident && "setFall" in viewer.animatedResident;
   element<HTMLButtonElement>("play-fall").disabled = !canFall;
   element("play-fall").textContent = simulation.fall ? "↺ Replay fall" : "▶ Play fall";

@@ -1,4 +1,5 @@
 /** Simulation frame: metres, seconds, right-handed Y-up; character forward is +Z. */
+import type { RoomHazardZone } from "./hazards";
 export type Point = { x: number; z: number };
 export type Footprint = Point & { width: number; depth: number };
 export type EnvironmentObject = Footprint & {
@@ -30,6 +31,7 @@ export type Environment = {
   passage: Point;
   navigation?: NavigationGrid;
   scenarioFootprints?: { cart: Footprint; blocked: Footprint };
+  hazardZones?: RoomHazardZone[];
 };
 export type MovementProfile = { speed: number; radius: number; height: number };
 export type Scenario = "clear" | "cart" | "blocked";
@@ -39,6 +41,7 @@ export type SimulationEvent = {
     | "manualControlStarted"
     | "fallStarted"
     | "fallCompleted"
+    | "hazardEncountered"
     | "routeStarted"
     | "routeReplanned"
     | "routeBlocked"

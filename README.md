@@ -1,5 +1,7 @@
 # House Lab
 
+**Hazards are integrated:** see the [hazard merge and reuse notes](docs/HAZARD-INTEGRATION.md) for zone configuration, profiles, popups and validation.
+
 **Collaborators:** start with the [Unitree integration and reuse guide](docs/UNITREE-COLLABORATOR-GUIDE.md).
 
 A browser-based house simulation with a photo-guided World Labs environment, the team's walking Unitree G1 robot, route planning and editable passage scenarios. The photo-guided room and robot demo is in **`environment-sim/v2/`**. V2 includes the team's Unitree G1/H1/Go2 bodies, articulated gait, arrow-key controls, first/third-person cameras and ground-level fall demos. Garden and upstairs reconstruction remain in **`environment-sim/v1-draft/`** and are not yet integrated into the realistic world.

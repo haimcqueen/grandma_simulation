@@ -1,5 +1,7 @@
 # Unitree in the realistic house: collaborator guide
 
+**Hazards are integrated:** see the [hazard merge and reuse notes](HAZARD-INTEGRATION.md) for zone configuration, profiles, popups and validation.
+
 Updated September 5, 2026.
 
 ## What ships

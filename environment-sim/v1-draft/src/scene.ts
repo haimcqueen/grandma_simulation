@@ -24,6 +24,7 @@ import { LIVERIES } from "./robot/livery";
 import { SwarmView } from "./robot/swarmView";
 import { loadFigurine } from "./robot/figurine";
 import { BALCONY, BALCONY_APPROACH, poseFall, fallOrientation } from "./robot/fall";
+import { buildHazardProps } from "./hazard-props";
 
 export function createHouseScene(
   container: HTMLElement,
@@ -217,6 +218,7 @@ export function createHouseScene(
     leaves.castShadow = true;
     scene.add(leaves);
   }
+  const hazardProps = buildHazardProps(scene, { material, box });
   function label(text: string, x: number, z: number, scale = 3.0) {
     const canvas = document.createElement("canvas");
     canvas.width = 512;
@@ -684,5 +686,6 @@ export function createHouseScene(
     liveries: LIVERIES,
     setDebug: (value: boolean) => (debugGroup.visible = value),
     setLabels: (value: boolean) => { showRoomLabels = value; },
+    setHazardProps: (value: boolean) => (hazardProps.visible = value),
   };
 }

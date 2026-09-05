@@ -50,7 +50,7 @@ try {
  assert.equal(returned.floor,'ground');assert.equal(returned.status,'arrived');assert.ok(Math.abs(returned.elevation)<.16);
  await page.locator('#reset').click();await page.locator('[data-scenario="blocked"]').click();
  const blocked=await page.evaluate(()=>{const s=window.houseLab.simulation;const result=s.requestFloor('upper');return {result,events:s.events};});
- assert.equal(blocked.result,false);assert.equal(blocked.events[0].type,'routeBlocked');
+ assert.equal(blocked.result,true,'The island barrier leaves the separate foyer stairs reachable');await page.locator('#reset').click();
  await page.locator('[data-scenario="clear"]').click();
  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(400);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

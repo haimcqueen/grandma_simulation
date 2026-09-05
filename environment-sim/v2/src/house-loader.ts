@@ -22,6 +22,12 @@ export function validateHouse(house: House) {
   if (new Set(house.connections.map(link => link.id)).size !== house.connections.length)
     throw new Error("Stair connections need unique IDs.");
   for (const link of house.connections) {
+    if (link.stairwell) {
+      const layout = link.stairwell;
+      if (![layout.origin.x, layout.origin.y, layout.origin.z, layout.yaw, layout.approach, layout.run, layout.separation, layout.hallLength, layout.rise].every(Number.isFinite) ||
+        [layout.approach, layout.run, layout.separation, layout.hallLength, layout.rise].some(value => value <= 0))
+        throw new Error("Stair enclosure dimensions must be finite and positive.");
+    }
     if (link.fromFloor === link.toFloor || link.points.length < 2 || !Number.isFinite(link.width) || link.width < 0.56 || !link.points.every(p => [p.x, p.y, p.z].every(Number.isFinite)))
       throw new Error("Stair connection geometry is invalid.");
     if (link.points.slice(1).some((point, index) => Math.hypot(point.x - link.points[index].x, point.z - link.points[index].z) < 0.001))

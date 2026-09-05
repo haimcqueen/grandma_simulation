@@ -41,6 +41,7 @@ Prefer `npm run fetch-world`: it also creates the local manifest. Both files are
 
 ## Team entry points
 
+- [Connected floors, corrected staircase and access review](docs/implementation/upstairs/layout-access-review.md)
 - [V2 app and character integration](environment-sim/v2/README.md)
 - [Implementation handoff and validation](docs/implementation/v2/README.md)
 - [Shared team foundations](docs/shared-specs/draft/TEAM-FOUNDATIONS.md)
@@ -50,7 +51,7 @@ The Unitree robot is replaceable through the resident API. The generated room ap
 
 ## Bringing the room into the team app
 
-V2 uses Spark to render RAD splats. The v1 GLB visual-slot loader cannot render the RAD directly, and the collider GLB is not a textured house. Reuse v2's `world-loader.ts` and rendering layers when integrating with v1, and reconcile coordinate transforms/navigation before moving v1 characters into this room. V2 incorporates the Unitree bodies and room-local fall poses; the garden and upstairs still require integration. See [the existing team handoff](docs/TEAM-HANDOFF-HOUSE.md) for those modules.
+V2 uses Spark to render RAD splats. The v1 GLB visual-slot loader cannot render the RAD directly, and the collider GLB is not a textured house. Reuse v2's `world-loader.ts` and rendering layers when integrating with v1, and reconcile coordinate transforms/navigation before moving v1 characters into this room. V2 incorporates the Unitree bodies and room-local fall poses; the garden still requires integration; a primary bedroom and upper hall are available in connected-house mode. See [the existing team handoff](docs/TEAM-HANDOFF-HOUSE.md) for those modules.
 
 ## Checks
 

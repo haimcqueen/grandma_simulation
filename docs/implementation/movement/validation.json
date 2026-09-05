@@ -5,35 +5,48 @@
   "build": "passed",
   "stateTests": {
     "shared": 27,
-    "house": 5,
+    "house": 7,
     "movement": 8,
-    "total": 40,
+    "total": 42,
     "result": "passed"
   },
   "browserSuites": [
-    "movement",
+    "movement API and canvas input",
     "house studio",
-    "house walkthrough",
+    "house walkthrough including hall clicks and lateral WASD",
     "original walkthrough",
     "combined",
     "cutaway",
-    "keyboard",
-    "hazards",
-    "recovery",
-    "unitree",
-    "room falls"
+    "hazard recovery"
   ],
   "browserResult": "passed",
   "stairClearance": {
-    "samples": 189,
+    "samples": 196,
     "contacts": 0,
-    "result": "passed"
+    "result": "passed",
+    "geometry": "Both generated colliders and authored stairwell walls/floors; oriented openings; normal step-height contact allowed"
   },
   "limitations": [
-    "Conservative room navigation coverage",
-    "Authored centerline stair travel; no foot IK or balance physics",
-    "Only the primary bedroom represents upstairs in this milestone",
-    "Grandma mesh adapter remains a separate task"
+    "Generated room scale and exact registration remain estimated",
+    "Some visible regions remain excluded by collider/support checks",
+    "Authored stairs and hall differ visually from the photorealistic room splats",
+    "Stair centerline travel has no foot IK or balance physics",
+    "Upper floor includes primary bedroom and authored hall only"
   ],
-  "publication": "Local commits only; awaiting user approval to push"
+  "publication": "Local commits only; awaiting user approval to push",
+  "revision": "Foyer stair enclosure, independent upper hall, agent-focused controls and finer ground navigation",
+  "navigation": {
+    "cellBefore": 0.15,
+    "cellAfter": 0.075,
+    "bodyRadiusUnchanged": 0.28,
+    "heightEnvelopeUnchanged": 1.7,
+    "standaloneConnectedAreaBefore": 10.4625,
+    "standaloneConnectedAreaAfter": 11.773125,
+    "areaUnits": "estimated square meters; cardinal cell connectivity diagnostic",
+    "newWorldGenerated": false
+  },
+  "notes": [
+    "Initial recovery browser attempts were interrupted during development; the clean rerun passed.",
+    "Existing large Spark/Three bundle advisory remains."
+  ]
 }

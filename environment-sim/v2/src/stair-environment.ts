@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { disposeMeshes } from "./scene-resources";
+import { buildStairStructure } from "./stair-structure";
 import type { StairConnection } from "./house";
 
 /** Authored connector geometry. Route elevation follows a continuous ramp over visible treads; no foot-contact physics. */
@@ -24,6 +25,8 @@ export function buildStairConnection(connection: StairConnection) {
   const wood = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.72 });
   const white = new THREE.MeshStandardMaterial({ color: "#eae7df", roughness: 0.8 });
   const steel = new THREE.MeshStandardMaterial({ color: "#747a77", roughness: 0.32, metalness: 0.7 });
+  const glass = new THREE.MeshStandardMaterial({ color: "#dbe6e5", transparent: true, opacity: 0.24, roughness: 0.12, metalness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+  const strip = new THREE.MeshStandardMaterial({ color: "#fff0d1", emissive: "#ffe2a8", emissiveIntensity: 0.7 });
   const rail = (a: THREE.Vector3, b: THREE.Vector3, radius: number, material: THREE.Material) => {
     const delta = b.clone().sub(a);
     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, delta.length(), 10), material);
@@ -44,7 +47,7 @@ export function buildStairConnection(connection: StairConnection) {
       const t = (step + 0.5) / risers;
       const position = a.clone().lerp(b, t);
       const top = position.y;
-      const tread = new THREE.Mesh(new THREE.BoxGeometry(connection.width, 0.1, length / risers + (risers === 1 ? connection.width : 0.012)), wood);
+      const tread = new THREE.Mesh(new THREE.BoxGeometry(connection.width, 0.1, length / risers + (risers === 1 && index === 3 ? connection.width : risers === 1 ? 0 : 0.012)), wood);
       tread.position.copy(position); tread.position.y = top - 0.05;
       tread.rotation.y = Math.atan2(direction.x, direction.z);
       tread.receiveShadow = true; root.add(tread);
@@ -53,6 +56,9 @@ export function buildStairConnection(connection: StairConnection) {
         riser.position.copy(position).addScaledVector(direction, -length / risers / 2);
         riser.position.y -= Math.abs(b.y-a.y)/risers/2;
         riser.rotation.y = tread.rotation.y; root.add(riser);
+        const light = new THREE.Mesh(new THREE.BoxGeometry(connection.width - .08, .012, .025), strip);
+        light.position.copy(riser.position); light.position.y = top - .025;
+        light.rotation.y = tread.rotation.y; root.add(light);
       }
     }
     for (const sign of [-1, 1]) {
@@ -68,13 +74,27 @@ export function buildStairConnection(connection: StairConnection) {
       const start = a.clone().lerp(b, inset / length).addScaledVector(side, sign * connection.width / 2);
       const end = b.clone().lerp(a, inset / length).addScaledVector(side, sign * connection.width / 2);
       const count = Math.max(1, Math.ceil(length / 0.65));
-      for (let post = 0; post <= count; post++) {
+      for (let post = 0; post <= count && !(connection.stairwell && index === 2); post++) {
         const foot = start.clone().lerp(end, post/count);
         rail(foot, foot.clone().add(new THREE.Vector3(0, 0.95, 0)), 0.018, steel);
       }
-      rail(start.add(new THREE.Vector3(0, 0.95, 0)), end.add(new THREE.Vector3(0, 0.95, 0)), 0.04, wood);
+      if (connection.stairwell && index !== 2 && Math.max(a.y, b.y) > 1) {
+        const vertices = [start.x,start.y+.08,start.z, end.x,end.y+.08,end.z, end.x,end.y+.87,end.z, start.x,start.y+.87,start.z];
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setIndex([0,1,2,0,2,3]); geometry.computeVertexNormals();
+        root.add(new THREE.Mesh(geometry, glass));
+      }
+      rail(start.add(new THREE.Vector3(0, 0.95, 0)), end.add(new THREE.Vector3(0, 0.95, 0)), 0.035, wood);
     }
   }
+  const structure = buildStairStructure(connection);
+  const replaced = new Set<THREE.Material>();
+  structure.traverse(child => {
+    if (child instanceof THREE.Mesh && child.userData.navigationFloor) { replaced.add(child.material as THREE.Material); child.material = wood.clone(); }
+  });
+  replaced.forEach(material => material.dispose());
+  root.add(structure);
   return root;
 }
 

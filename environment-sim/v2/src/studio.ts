@@ -6,7 +6,7 @@ import { Simulation } from "./simulation";
 import { Viewer } from "./viewer";
 import { loadSimulationEnvironment } from "./simulation-environment";
 import { MovementProgram } from "./movement/program";
-import { mountMovementStudio } from "./movement/studio";
+import { attachClickWalking } from "./movement/pointer";
 import { WalkingRoutine } from "./walking-routine";
 import { postures, type Posture } from "./posture";
 import { LIVERIES } from "../../v1-draft/src/robot/livery";
@@ -23,7 +23,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 <aside><div class="eyebrow">SCENARIO STUDIO</div><h2>Everyday journeys.</h2><p class="intro">Explore how a small change in a room changes the way through it.</p>
 <label class="field-label" for="environment">Environment</label><select id="environment"><option value="house">Tantau · connected floors</option><option value="fixture">V1-style · authored fixture</option><option value="sample">World Labs · sample inspection</option></select>
 <p class="source-note" id="environment-note">Estimated layout, inspired by the listing. The realistic room is available in the environment selector.</p>
-<div id="simulation-controls"><section id="floor-controls" hidden><div class="section-number">HOUSE <span id="current-floor">Ground floor</span></div><div class="segmented"><button id="go-ground">Walk downstairs</button><button id="go-upper">Walk upstairs</button></div><label class="field-label" for="floor-view">Floor to view</label><select id="floor-view"><option value="auto">Follow resident's floor</option><option value="ground">Ground floor</option><option value="upper">Second floor</option><option value="all">Both floors and stairs</option></select><p class="source-note">Photo-guided bedroom · authored stair/landing connection · approximate alignment</p><p id="floor-status" class="source-note"></p></section><div id="movement-studio"></div><button id="routine" class="routine-button">▶ Walk around</button><section class="control-section"><div class="section-number">01 <span>Choose a destination</span></div><div class="destinations">${tantauFixture.destinations.map((target, index) => `<button data-destination="${target.id}"><span>0${index + 1}</span>${target.label}<b>↗</b></button>`).join("")}</div></section>
+<div id="simulation-controls"><section id="floor-controls" hidden><div class="section-number">HOUSE <span id="current-floor">Ground floor</span></div><div class="segmented"><button id="go-ground">Walk downstairs</button><button id="go-upper">Walk upstairs</button></div><label class="field-label" for="floor-view">Floor to view</label><select id="floor-view"><option value="auto">Follow resident's floor</option><option value="ground">Ground floor</option><option value="upper">Second floor</option><option value="all">Both floors and stairs</option></select><p class="source-note">Photo-guided bedroom · authored stair/landing connection · approximate alignment</p><p id="floor-status" class="source-note"></p></section><button id="routine" class="routine-button">▶ Walk around</button><section class="control-section"><div class="section-number">01 <span>Choose a destination</span></div><div class="destinations">${tantauFixture.destinations.map((target, index) => `<button data-destination="${target.id}"><span>0${index + 1}</span>${target.label}<b>↗</b></button>`).join("")}</div></section>
 <section class="control-section"><div class="section-number">02 <span>Change the passage</span></div><div class="segmented"><button data-scenario="clear">Clear</button><button data-scenario="cart">Add cart</button><button data-scenario="blocked">Block</button></div><p id="scenario-description" class="source-note"></p></section>
 <section class="control-section" id="hazard-controls"><div class="section-number">HAZARDS <span>Explore nearby objects</span></div><label class="field-label" for="hazard-profile">Scenario profile</label><select id="hazard-profile"><option value="auto">Match body preset</option><option value="elderly">Older-adult scenario</option><option value="toddler">Toddler scenario</option><option value="off">Off</option></select><label class="source-note"><input type="checkbox" id="hazard-props" checked> Show demo hazard objects</label><label class="source-note"><input type="checkbox" id="hazard-falls" checked> Grandma falls and gets up at hazards</label><p id="hazard-profile-note" class="source-note"></p><p class="source-note">Grandma trips on the rug or cable and loses balance over small objects, then gets up and continues. These are placed demo hazards.</p></section><section class="resident-card"><div class="resident-avatar">R</div><div><strong id="resident-name">Unitree G1</strong><small id="resident-model" role="status">Loading robot…</small></div><span class="status-dot"></span></section>
 <label class="field-label" for="posture">Unitree body & movement</label><select id="posture">${Object.entries(postures).map(([id, preset]) => `<option value="${id}">${preset.label}</option>`).join("")}</select><p class="source-note">Authored movement presets, not a medical model or a rule about older adults.</p>
@@ -81,9 +81,11 @@ const keyboard = createKeyboardControls(window, {
 });
 const clearKeys = () => keyboard.clear();
 const viewer = new Viewer(element("viewport"), tantauFixture);
-const movementStudio = mountMovementStudio(element("movement-studio"), {
-  viewer, simulation: () => simulation, program: () => movement,
+const disposeClickWalking = attachClickWalking({
+  viewer, program: () => movement,
+  enabled: () => !loading && !residentLoading && viewer.mode !== "world",
   beforeRun: () => { clearKeys(); routine.stop(); },
+  onMessage: message => notice(message),
 });
 void viewer.loadRobot().then(() => {
   if (viewer.animatedResident && "robot" in viewer.animatedResident)
@@ -384,7 +386,6 @@ let lastEnvironmentId = "";
 let lastEvents: unknown;
 let shownHazard: unknown;
 function renderUI() {
-  movementStudio.update();
   if (lastEnvironmentId !== simulation.environment.id) {
     lastEnvironmentId = simulation.environment.id;
     refreshDestinations();
@@ -567,7 +568,7 @@ Object.assign(window, {
 });
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
-    movementStudio.dispose();
+    disposeClickWalking();
     keyboard.dispose();
     viewer.renderer.setAnimationLoop(null);
     viewer.dispose();

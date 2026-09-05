@@ -1,7 +1,7 @@
 {
   "id": "tantau-ground-with-stair-opening",
   "label": "Tantau great room",
-  "source": "Photo-guided World Labs generation \u00b7 approximate listing interior",
+  "source": "Photo-guided World Labs generation · approximate listing interior",
   "splatUrl": "https://cdn.mint.gg/rad/cupertino-great-room-75d102ed1ec65cbc-lod.rad",
   "colliderUrl": "https://cdn.mint.gg/worlds/cupertino-great-room-collider-f2bc2c892005c3d9.glb",
   "splatTransform": {
@@ -48,15 +48,16 @@
   "cutouts": [
     {
       "min": [
-        -0.3,
+        -4.908460969082654,
         0.12,
-        -6.5
+        -0.10791651245988532
       ],
       "max": [
-        2.35,
+        -0.9484609690826535,
         3.39,
-        -2.7
-      ]
+        2.532083487540115
+      ],
+      "yaw": -2.6179938779914944
     }
   ]
 }

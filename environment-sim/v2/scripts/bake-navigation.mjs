@@ -1,9 +1,11 @@
+import { cutoutContains } from "../src/world-cutout.ts";
+import { buildStairStructure } from "../src/stair-structure.ts";
 import { readFile, writeFile } from "node:fs/promises";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 
-// Usage: node scripts/bake-navigation.mjs <world.json> <collider.glb> <calibration.json> <output.json>
+// Usage: npx tsx scripts/bake-navigation.mjs <world.json> <collider.glb> <calibration.json> <output.json>
 const [worldPath, colliderPath, calibrationPath, outputPath] =
   process.argv.slice(2);
 if (!outputPath)
@@ -22,6 +24,7 @@ gltf.scene.quaternion.fromArray(world.colliderTransform.quaternion);
 gltf.scene.scale.setScalar(world.colliderTransform.scale);
 gltf.scene.updateMatrixWorld(true);
 const meshes = [];
+const generated = new Set();
 gltf.scene.traverse((child) => {
   if (!child.isMesh) return;
   const geometry = child.geometry.clone().applyMatrix4(child.matrixWorld);
@@ -32,8 +35,23 @@ gltf.scene.traverse((child) => {
   geometry.boundsTree = new MeshBVH(geometry);
   mesh.raycast = acceleratedRaycast;
   mesh.updateMatrixWorld();
-  meshes.push(mesh);
+  meshes.push(mesh); generated.add(mesh);
 });
+const reservedStairwells = [];
+if (settings.houseUrl) {
+  const house = JSON.parse(await readFile(`public${settings.houseUrl}`, "utf8"));
+  for (const link of house.connections) {
+    if (link.fromFloor === settings.floorId && link.stairwell) reservedStairwells.push({ ...link.stairwell, width: link.width });
+    const structure = buildStairStructure(link);
+    structure.traverse(child => {
+      if (!child.isMesh) return;
+      const geometry = child.geometry.clone().applyMatrix4(child.matrixWorld);
+      geometry.boundsTree = new MeshBVH(geometry);
+      const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+      mesh.raycast = acceleratedRaycast; mesh.updateMatrixWorld(); meshes.push(mesh);
+    });
+  }
+}
 const { floorY, minimumX, maximumX, minimumZ, maximumZ } = settings;
 const cell = settings.cell ?? 0.15,
   radius = settings.radius ?? 0.28,
@@ -43,14 +61,15 @@ const columns = Math.ceil((maximumX - minimumX) / cell),
 const walkable = Array(columns * rows).fill(0),
   floorHeights = Array(columns * rows).fill(floorY);
 const ray = new THREE.Raycaster();
-ray.firstHitOnly = true;
+ray.firstHitOnly = false;
 const downward = new THREE.Vector3(0, -1, 0);
+const floorTolerance = settings.floorTolerance ?? .16;
 const getFloor = (x, z) => {
-  ray.set(new THREE.Vector3(x, floorY + 0.25, z), downward);
-  ray.far = 0.45;
-  const hit = ray.intersectObjects(meshes)[0];
+  ray.set(new THREE.Vector3(x, floorY + floorTolerance + .09, z), downward);
+  ray.far = floorTolerance * 2 + .13;
+  const hit = ray.intersectObjects(meshes).find(hit => !generated.has(hit.object) || !(world.cutouts ?? []).some(cut => cutoutContains(cut, hit.point)));
   return hit &&
-    Math.abs(hit.point.y - floorY) < 0.16 &&
+    Math.abs(hit.point.y - floorY) < floorTolerance &&
     Math.abs(hit.face.normal.y) > 0.75
     ? hit.point.y
     : null;
@@ -64,6 +83,11 @@ for (let z = 0; z < rows; z++)
     const px = minimumX + (x + 0.5) * cell,
       pz = minimumZ + (z + 0.5) * cell,
       index = z * columns + x;
+    // Floor walking cannot enter the flight volume. The stair controller takes over at its supported endpoint.
+    if (reservedStairwells.some(layout => {
+      const local = new THREE.Vector3(px-layout.origin.x, 0, pz-layout.origin.z).applyAxisAngle(new THREE.Vector3(0,1,0), -layout.yaw);
+      return local.x > .18 && local.x < layout.approach+layout.run+layout.width/2+.16 && local.z > -layout.width/2-.16 && local.z < layout.separation+layout.width/2+.16;
+    })) continue;
     const ground = getFloor(px, pz);
     if (ground === null) continue;
     floorHeights[index] = Number(ground.toFixed(4));
@@ -94,7 +118,9 @@ for (let z = 0; z < rows; z++)
             ground + 0.12
           )
             return false;
-          return triangle.closestPointToSegment(capsule) < inflated;
+          const point = new THREE.Vector3();
+          const distance = triangle.closestPointToSegment(capsule, point);
+          return distance < inflated && (!generated.has(mesh) || !(world.cutouts ?? []).some(cut => cutoutContains(cut, point)));
         },
       }),
     );

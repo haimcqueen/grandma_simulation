@@ -33,9 +33,9 @@ test('manual stair takeover stops, reverses to source, then climbs and descends'
  const sim=await houseFixture();sim.requestFloor('upper');until(sim,null,()=>sim.elevation>1);
  sim.setManual();sim.drive(0,0,1/60);const height=sim.elevation;for(let i=0;i<60;i++)sim.advance(1/60);assert.equal(sim.elevation,height);
  sim.drive(-1,0,1/60);until(sim,null,()=>!sim.floorJourney);assert.equal(sim.floorId,'ground');assert.ok(Math.abs(sim.elevation)<.16);
- sim.heading=Math.PI;sim.drive(1,0,1/60);assert.ok(sim.floorJourney,'Keyboard approach enters stairs without a floor button');
+ sim.heading=Math.atan2(sim.house.connections[0].points[1].x-sim.position.x,sim.house.connections[0].points[1].z-sim.position.z);sim.drive(1,0,1/60);assert.ok(sim.floorJourney,'Keyboard approach enters stairs without a floor button');
  for(let i=0;i<15000&&sim.floorId!=='upper';i++){sim.drive(1,0,1/60);sim.advance(1/60);}assert.equal(sim.floorId,'upper');assert.equal(sim.manual,true);
- sim.heading=Math.PI;sim.drive(1,0,1/60);assert.ok(sim.floorJourney);for(let i=0;i<15000&&sim.floorId!=='ground';i++){sim.drive(1,0,1/60);sim.advance(1/60);}assert.equal(sim.floorId,'ground');
+ sim.heading=Math.atan2(sim.house.connections[0].points.at(-2).x-sim.position.x,sim.house.connections[0].points.at(-2).z-sim.position.z);sim.drive(1,0,1/60);assert.ok(sim.floorJourney);for(let i=0;i<15000&&sim.floorId!=='ground';i++){sim.drive(1,0,1/60);sim.advance(1/60);}assert.equal(sim.floorId,'ground');
 });
 test('direct walking slides along a boundary without leaving valid space',()=>{
  const environment={...structuredClone(tantauFixture),objects:[],spawn:{x:.3,z:2}};

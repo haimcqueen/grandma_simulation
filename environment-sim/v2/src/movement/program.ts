@@ -29,7 +29,7 @@ export class MovementProgram {
   steps: MovementStep[] = [];
   index = 0;
   status: "idle" | "running" | "blocked" | "completed" | "cancelled" = "idle";
-  message = "Click a floor to walk. Shift-click builds a path.";
+  message = "Click a floor to walk, or use WASD.";
   private stage: "start" | "transfer" | "walk" | "wait" = "start";
   private deadline = 0;
   private previousTime = 0;

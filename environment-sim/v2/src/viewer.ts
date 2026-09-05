@@ -189,6 +189,19 @@ export class Viewer {
       });
       return hit ? [{ hit, floor }] : [];
     }).sort((a, b) => a.hit.distance - b.hit.distance);
+    if (this.house && this.stairs.visible) {
+      const authored = ray.intersectObject(this.stairs, true).find(hit => {
+        if (!hit.object.visible || !(hit.object instanceof THREE.Mesh)) return false;
+        const material = hit.object.material as THREE.Material;
+        return !(material.clippingPlanes ?? []).some(plane => plane.distanceToPoint(hit.point) < 0);
+      });
+      if (authored) {
+        const floor = this.house.floors.find(floor => floor.id === authored.object.userData.navigationFloor);
+        if (!floor && (!candidates[0] || authored.distance < candidates[0].hit.distance)) return null;
+        if (floor && (this.floorView === "all" || floor.environment.id === this.environment.id || this.floorView === floor.id)) candidates.push({ hit: authored, floor });
+      }
+    }
+    candidates.sort((a, b) => a.hit.distance - b.hit.distance);
     const nearest = candidates[0];
     if (!nearest) return null;
     const point = { x: nearest.hit.point.x, z: nearest.hit.point.z };
@@ -465,6 +478,10 @@ export class Viewer {
         for (const [id, entry] of this.houseWorlds) if (selection === "all" || id === selection)
           this.roomBounds.union(new THREE.Box3().setFromObject(entry.world.collider));
         if (selection === "all") this.roomBounds.union(new THREE.Box3().setFromObject(this.stairs));
+        else this.stairs.traverse(child => {
+          if (child instanceof THREE.Mesh && child.userData.architecture && Math.abs(child.userData.floorY - this.house!.floors.find(f => f.id === selection)!.environment.floorY) < .1)
+            this.roomBounds.union(new THREE.Box3().setFromObject(child));
+        });
         if (["top", "side", "overview"].includes(this.view)) this.setView(this.view);
       }
     }
@@ -484,6 +501,29 @@ export class Viewer {
       const facing = this.camera.position.clone().sub(focus); facing.y = 0; facing.normalize();
       const frontPoint = obstruction ? obstruction.point.clone().addScaledVector(facing, -0.25) : focus;
       world.setFrontCut(obstruction ? facing : null, frontPoint, floorY);
+    }
+    if (this.house) {
+      const focus = new THREE.Vector3(simulation.position.x, simulation.elevation + 1.05, simulation.position.z);
+      const direction = focus.clone().sub(this.camera.position);
+      const sightline = new THREE.Raycaster(this.camera.position, direction.clone().normalize(), 0, Math.max(0, direction.length() - .25));
+      const selection = simulation.floorJourney?.phase === "stairs" ? "all" : this.floorView === "auto" ? simulation.floorId : this.floorView;
+      this.stairs.traverse(child => {
+        if (!(child instanceof THREE.Mesh) || !child.userData.architecture) return;
+        const floorY = child.userData.floorY as number;
+        const floorId = this.house!.floors.find(f => Math.abs(f.environment.floorY - floorY) < .1)?.id;
+        child.visible = selection === "all" || selection === floorId || (!cut && child.userData.stairShell);
+        if (!child.userData.cutPlane) {
+          child.userData.cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), floorY + this.cutawayHeight);
+        }
+        const material = child.material as THREE.Material;
+        child.userData.cutPlane.constant = floorY + this.cutawayHeight;
+        if (child.userData.cutEnabled !== cut) { material.clippingPlanes = cut ? [child.userData.cutPlane] : null; material.needsUpdate = true; child.userData.cutEnabled = cut; }
+        if (child.visible && cut && this.view !== "top" && !child.userData.navigationFloor) {
+          const normal = child.userData.cutawayNormal ? new THREE.Vector3(...child.userData.cutawayNormal).transformDirection(child.matrixWorld) : undefined;
+          const toCamera = this.camera.position.clone().sub(child.getWorldPosition(new THREE.Vector3()));
+          if ((normal && normal.dot(toCamera) > 0) || sightline.intersectObject(child).length) child.visible = false;
+        }
+      });
     }
     this.cutawayKey = cutawayKey;
     this.resident.root.position.set(
@@ -590,7 +630,11 @@ export class Viewer {
       if (this.mode === "world-simulation" && this.world) {
         const direction = desiredCamera.clone().sub(target);
         const ray = new THREE.Raycaster(target, direction.clone().normalize(), 0, direction.length());
-        const hit = this.world.raycast(ray)[0];
+        const hits = this.house
+          ? [...this.houseWorlds.values()].filter(entry => entry.world.splats.visible).flatMap(entry => entry.world.raycast(ray))
+          : this.world.raycast(ray);
+        if (this.house) hits.push(...ray.intersectObject(this.stairs, true).filter(hit => hit.object.visible));
+        const hit = hits.sort((a, b) => a.distance - b.distance)[0];
         if (hit) desiredCamera.copy(target).addScaledVector(direction.normalize(), Math.max(0.15, hit.distance - 0.15));
       }
       this.camera.position.lerp(desiredCamera, 0.08);

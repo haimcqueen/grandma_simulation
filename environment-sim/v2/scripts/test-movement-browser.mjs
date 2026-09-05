@@ -16,17 +16,17 @@ try{
  await page.waitForFunction(()=>window.houseLab.movement.status==='running');
  await page.evaluate(()=>{const {simulation:s,movement:m}=window.houseLab;for(let i=0;i<1000&&m.status==='running';i++){s.advance(1/60);m.advance();}});
  assert.equal(await page.evaluate(()=>window.houseLab.movement.status),'completed');
- await page.locator('#path-json').fill('[]');await clickPoint({x:.525,z:.425},true);await clickPoint({x:1.725,z:-2.275},true);
- assert.equal(JSON.parse(await page.locator('#path-json').inputValue()).length,2);
- await page.locator('#path-wait').click();assert.equal(JSON.parse(await page.locator('#path-json').inputValue())[2].type,'wait');
- await page.locator('#path-run').click();await page.waitForFunction(()=>window.houseLab.movement.status==='running');
- await page.locator('#path-stop').click();const stopped=await page.evaluate(()=>window.houseLab.simulation.position);await page.waitForTimeout(300);assert.deepEqual(await page.evaluate(()=>window.houseLab.simulation.position),stopped);
+ assert.equal(await page.locator('#path-json').count(),0);
+ assert.equal(await page.getByText('PATH STUDIO',{exact:false}).count(),0);
+ await page.evaluate(()=>window.houseLab.movement.run([{type:'walk',point:{x:.525,z:.425}},{type:'wait',seconds:2},{type:'walk',point:{x:1.725,z:-2.275}}]));
+ await page.waitForFunction(()=>window.houseLab.movement.status==='running');
+ await page.evaluate(()=>window.houseLab.movement.cancel());const stopped=await page.evaluate(()=>window.houseLab.simulation.position);await page.waitForTimeout(300);assert.deepEqual(await page.evaluate(()=>window.houseLab.simulation.position),stopped);
  await page.locator('#reset').click();await page.locator('#go-upper').click();
  await page.evaluate(()=>{const s=window.houseLab.simulation;for(let i=0;i<10000&&s.elevation<1;i++)s.advance(1/60);});
  await page.keyboard.down('w');await page.waitForTimeout(200);await page.keyboard.up('w');await page.waitForTimeout(200);
  const height=await page.evaluate(()=>window.houseLab.simulation.elevation);await page.waitForTimeout(400);assert.equal(await page.evaluate(()=>window.houseLab.simulation.elevation),height);
  await page.keyboard.down('s');await page.waitForTimeout(500);await page.keyboard.up('s');assert.ok(await page.evaluate(()=>window.houseLab.simulation.elevation)<height);
- await page.locator('#path-stop').click();await page.locator('[data-view="side"]').click();await page.screenshot({path:'.artifacts/upstairs/movement-studio.png'});
+ await page.evaluate(()=>window.houseLab.movement.cancel());await page.locator('[data-view="side"]').click();await page.screenshot({path:'.artifacts/upstairs/movement-controls.png'});
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
- assert.deepEqual(errors,[]);console.log('PASS click-to-walk, editable waypoints, wait, stop, WASD stair takeover/reverse, mobile');
+ assert.deepEqual(errors,[]);console.log('PASS click-to-walk, agent-authored waypoints and waits, stop, WASD stair takeover/reverse, mobile');
 }finally{await browser.close();}

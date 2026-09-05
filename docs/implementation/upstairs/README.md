@@ -1,6 +1,6 @@
 # Connected upstairs handoff
 
-Implemented locally on 2026-09-05 in `environment-sim/v2/`. This milestone connects the existing photo-guided ground-floor great room to a newly generated primary bedroom through an authored U-shaped stair and landing. Other upstairs bedrooms, bathrooms and the complete hall are not included.
+Implemented locally on 2026-09-05 in `environment-sim/v2/`. This milestone connects the existing photo-guided ground-floor great room to a newly generated primary bedroom through an authored U-shaped stair and landing. An authored upper hall is included; other upstairs bedrooms and bathrooms are not. The [layout/access review](layout-access-review.md) records the subsequent correction of the stair placement and navigation.
 
 Integrated the teammate's manual walkthrough and hazard/recovery changes from `origin/main` at `a78d2e9` on local branch `feature/tantau-upstairs`. Commits are prepared locally for review; pushing requires the user's approval. See the [movement handoff](../movement/README.md) for the current controls and reusable scripting API.
 
@@ -12,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5174/?house=1** for the simple two-floor walkthrough. Use **http://127.0.0.1:5174/simulation.html?house=1** for Path Studio, or choose **Tantau · connected floors** in the studio environment selector. The teammate's ordinary manual ground-floor walkthrough remains at `/`. Choose **Walk upstairs**, then **Walk downstairs** for the return journey. The house starts idle; Walk around tours destinations on the active floor.
+Open **http://127.0.0.1:5174/?house=1** for the simple two-floor walkthrough. Use **http://127.0.0.1:5174/simulation.html?house=1** for development scenario controls, or choose **Tantau · connected floors** in the studio environment selector. The teammate's ordinary manual ground-floor walkthrough remains at `/`. Choose **Walk upstairs**, then **Walk downstairs** for the return journey. The house starts idle; Walk around tours destinations on the active floor.
 
 The app streams both assets from the public URLs in the manifests. Teammates need no generation key or login. Both worlds total approximately 96.66 MB including colliders; actual network transfer depends on RAD streaming and caching. For local copies:
 
@@ -26,7 +26,7 @@ The script verifies all four downloads against checked-in SHA-256 checksums and 
 
 [Photo review](../../research/world-labs/second-floor/README.md) records room assignments and confidence. [Generation record](generation-record.json) retains the one approved primary-bedroom submission; [runtime manifest](runtime-manifest.json) records its completed exports. Source image filename suffixes 23–26 are four matching MLS bedroom views, not Zillow gallery positions.
 
-The generated bedroom preserves the source's pale oak flooring, upholstered bed, rust-colored pillows, console, white trim and tray ceiling. Unseen surfaces and doorway geometry are generated. The connector uses authored wood treads, white risers/stringers and rails; its placement and dimensions are estimates fitted to the two assets. It does not reconstruct the listing's actual stair location or full upper floor plan. Camera cutaways expose incomplete generated surfaces, particularly around exterior/window edges.
+The generated bedroom preserves the source's pale oak flooring, upholstered bed, rust-colored pillows, console, white trim and tray ceiling. Unseen surfaces and doorway geometry are generated. The connector uses an enclosed foyer-side recess and an upper hall informed by the floor plan, with oak treads/rails, white risers and glass panels. The previous central-room placement is superseded. Dimensions and generated-room registration remain estimates; this is not a complete reconstruction of the upper floor. Camera cutaways expose incomplete generated surfaces, particularly around exterior/window edges.
 
 [Interior screenshot](evidence/upper-inside.png) · [Top-down screenshot](evidence/upper-top.png)
 
@@ -37,17 +37,17 @@ Meters and seconds; right-handed Y-up, character forward +Z, serialized quaterni
 | Component | Transform / ownership |
 | --- | --- |
 | Ground splat and collider | Scale 1.905, quaternion `[1,0,0,0]`, translation `[0,1.2954,0]`; nominal floor Y=0 |
-| Primary splat and collider | Scale 0.35, quaternion `[0,0,1,0]`, translation `[1.575,4.681,-2.125]`; nominal floor Y=3.4 |
+| Primary splat and collider | Scale 0.35; current rotation/translation in `public/environment/house/upper.json`; nominal floor Y=3.4 |
 | Upper navigation | 0.1 m cells; 0.28 m clearance, 1.7 m height envelope; sampled floor heights |
 | Stair | 1.1 m width; two estimated 1.7 m rises, middle landing, lower/upper approaches |
-| Ground stair endpoint | `(1.725, 0, -2.575)` |
-| Upper stair endpoint | `(0.325, 3.4, -2.575)` |
+| Ground stair endpoint | `(-0.525, 0, 0.575)` |
+| Upper stair endpoint | `(-1.175, 3.4, -0.550833)`; upper hall then leads to the bedroom |
 
 The bedroom's raw collider has a dominant floor around raw Y=3.66. Scale 0.35 gives an estimated main floor/ceiling separation near 3.06 m, then translation places its floor at 3.4 m. This is an appearance-based scale estimate, not surveyed dimensions or proof of exact stacking.
 
 `public/environment/house/house.json` owns floor manifests and the stair polyline. `upper-calibration.json` records the bake bounds/clearance; `upper-navigation.json` is the baked grid; `upper-simulation.json` owns spawn, named destinations and scenario footprints. The ground house manifest adds a connector opening while the standalone ground manifest remains usable independently.
 
-World-space `cutouts` are explicit authored doorway/stair openings. They cut splats and visual depth and filter ray queries. They do not rebake the floor grid: conservative room navigation remains intact, and the explicit stair path/landing geometry owns travel and support through the connector. If you change a cutout, recheck support and clearance; expanding one is not automatically permission to walk there.
+World-space `cutouts` are explicit authored openings, with optional yaw about their center. They cut splats and visual depth and filter ray queries. House navigation is rebaked against these openings plus shared authored walls/floors. The ground grid reserves the flight volume for the stair controller; the upper hall uses normal floor navigation. Keep these layers aligned when changing the layout.
 
 ## State, rendering and integration
 
@@ -71,13 +71,8 @@ Do not align new rooms from one screenshot alone. Inspect collider/appearance fr
 
 ## Validation performed
 
-- Production build passed; the existing large Spark/Three bundle warning remains.
-- 27 shared simulation/hazard tests, five house tests and eight movement tests passed, including every shipped destination pair, continuous ascent/descent, independent scenario state, blocked approach, pause/reset and invalid endpoint rejection.
-- `npm run test:stairs`: 189 sampled capsule positions along the authored route against both transformed generated colliders, excluding explicit cutouts; no contacts. This is a sampled static clearance check, not whole-body physics validation.
-- `npm run test:house:browser`: actual remote bedroom and ground assets, return journey, floor-scoped ceiling heights, camera modes, floor visibility, obstruction, export, mobile layout and fixture switching.
-- Existing walkthrough, cutaway, combined, keyboard, hazard, recovery, Unitree and room-fall browser suites passed. See the movement handoff for the recorded result.
-- All four assets downloaded successfully; byte counts and SHA-256 recorded in `public/environment/house/checksums.json`.
+Current checks and results are recorded in [movement/validation.json](../movement/validation.json). The [layout/access review](layout-access-review.md) explains the geometry checks, finer navigation and remaining limitations. Earlier evidence images and 189-sample stair results describe the superseded placement; the revised connector is checked at 196 sampled positions, including authored enclosure geometry.
 
-Run `npm run build`, `npm test`, `npm run test:house`; with Vite running, run `npm run test:house:browser`. Download assets with `npm run fetch-house` before `npm run test:stairs`. Re-bake navigation and validate endpoints whenever transforms or geometry change.
+Run `npm run build`, `npm test`, `npm run test:house` and `npm run test:movement`. With Vite running, run `npm run test:house:browser`, `npm run test:house:walkthrough` and `npm run test:movement:browser`. Download assets with `npm run fetch-house` before `npm run test:stairs`. Re-bake navigation and validate endpoints whenever transforms or geometry change.
 
-Local screenshots and export fixtures are under ignored `.artifacts/upstairs/`. Only selected evidence images and small configuration/provenance files belong in Git. No additional upstairs generation is in flight.
+Large assets and exploratory screenshots stay under ignored directories. No new splat was generated for the layout revision, and no generation is in flight.

@@ -1,4 +1,5 @@
 import { loadHouse } from "./house-loader";
+import { attachClickWalking } from "./movement/pointer";
 import { MovementProgram } from "./movement/program";
 import { parseWorldAsset } from "./asset-manifest";
 import type { Environment } from "./contracts";
@@ -16,7 +17,7 @@ app.innerHTML = `
   <nav class="camera-views" aria-label="Camera views">
     ${views.map(view => `<button data-view="${view.id}" aria-pressed="${view.id === "follow"}" title="${view.label} (${view.shortcut})" disabled>${view.label}</button>`).join("")}
   </nav>
-  ${connectedHouse ? `<div class="house-actions"><button id="walk-floor" disabled>Walk upstairs</button><button id="stop-walk" disabled>Stop here</button><a href="/simulation.html?house=1">Edit path ↗</a><span id="movement-status" role="status"></span></div>` : ""}
+  ${connectedHouse ? `<div class="house-actions"><button id="walk-floor" disabled>Walk upstairs</button><button id="stop-walk" disabled>Stop here</button><span id="movement-status" role="status"></span></div>` : ""}
   <div class="loading-message" role="status"><span id="load-status">Loading the room…</span><button id="retry" hidden>Try again</button></div>
   <div class="walk-hint"><span>↑ ↓ Move <span class="hint-divider">/</span> ← → Turn <span class="hint-divider">/</span> WASD</span><span id="camera-hint">Drag to look · Scroll to zoom</span></div>
 </main>`;
@@ -28,6 +29,7 @@ const buttons = [...document.querySelectorAll<HTMLButtonElement>("[data-view]")]
 let viewer: Viewer | undefined;
 let simulation: ReturnType<typeof createWalkthroughSimulation> | undefined;
 let movement: MovementProgram | undefined;
+let disposeClickWalking: (() => void) | undefined;
 let ready = false;
 let disposed = false;
 
@@ -100,16 +102,10 @@ async function start() {
       floorButton.onclick = () => { keyboard.clear(); movement!.run([{ type: "floor", floor: simulation!.floorId === "ground" ? "upper" : "ground" }]); floorButton.blur(); };
       const stopButton = document.querySelector<HTMLButtonElement>("#stop-walk")!;
       stopButton.disabled = false; stopButton.onclick = () => { keyboard.clear(); movement!.cancel(); stopButton.blur(); };
-      const canvas = viewer.renderer.domElement;
-      let down = { x: 0, y: 0, button: -1 };
-      canvas.addEventListener("pointerdown", event => { down = { x: event.clientX, y: event.clientY, button: event.button }; });
-      canvas.addEventListener("pointerup", event => {
-        if (down.button !== 0 || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 5) return;
-        const target = viewer!.pickMovementTarget(event.clientX, event.clientY);
-        const label = document.querySelector<HTMLElement>("#movement-status")!;
-        if (!target) { label.textContent = "Choose a floor surface."; return; }
-        try { movement!.run([{ type: "walk", ...target }]); label.textContent = ""; }
-        catch (error) { label.textContent = error instanceof Error ? error.message : String(error); }
+      disposeClickWalking = attachClickWalking({
+        viewer, program: () => movement!, enabled: () => ready,
+        beforeRun: () => keyboard.clear(),
+        onMessage: message => { document.querySelector<HTMLElement>("#movement-status")!.textContent = message; },
       });
     }
     ready = true;
@@ -153,6 +149,7 @@ void start();
 if (import.meta.hot) import.meta.hot.dispose(() => {
   disposed = true;
   ready = false;
+  disposeClickWalking?.();
   keyboard.dispose();
   viewer?.renderer.setAnimationLoop(null);
   viewer?.dispose();

@@ -1,0 +1,82 @@
+{
+  "id": "tantau-ground-with-stair-navigation",
+  "label": "Tantau \u00b7 realistic simulation",
+  "provenance": "Photo-guided room with collider-derived routes; dimensions estimated. Fictional movement profile, not a surveyed floor plan.",
+  "floor": {
+    "x": -0.15,
+    "z": -3.1,
+    "width": 14.1,
+    "depth": 18
+  },
+  "floorY": 0,
+  "objects": [],
+  "spawn": {
+    "x": 0.525,
+    "z": 0.425
+  },
+  "destinations": [
+    {
+      "id": "living",
+      "label": "Living passage",
+      "x": 0.525,
+      "z": 0.425
+    },
+    {
+      "id": "kitchen",
+      "label": "Kitchen approach",
+      "x": 1.725,
+      "z": -2.275
+    },
+    {
+      "id": "dining",
+      "label": "Rear passage",
+      "x": 1.275,
+      "z": 2.225
+    }
+  ],
+  "passage": {
+    "x": 0.825,
+    "z": -0.925
+  },
+  "scenarioFootprints": {
+    "cart": {
+      "x": 0.825,
+      "z": -0.925,
+      "width": 0.55,
+      "depth": 0.5
+    },
+    "blocked": {
+      "x": 1.05,
+      "z": -0.925,
+      "width": 2.6,
+      "depth": 0.25
+    }
+  },
+  "navigationUrl": "/environment/house/ground-navigation.json",
+  "hazardZones": [
+    {
+      "hazardId": "loose_rug",
+      "x": 1.125,
+      "z": 1.325,
+      "radius": 0.55,
+      "room": "Rear passage \u00b7 demo rug",
+      "propScale": 0.45
+    },
+    {
+      "hazardId": "loose_cords",
+      "x": 1.275,
+      "z": -0.2,
+      "radius": 0.5,
+      "room": "Living passage \u00b7 demo cable",
+      "propScale": 0.5
+    },
+    {
+      "hazardId": "small_objects_reachable",
+      "x": 1.725,
+      "z": -2.275,
+      "radius": 0.6,
+      "room": "Kitchen approach \u00b7 demo objects",
+      "propScale": 0.65
+    }
+  ]
+}

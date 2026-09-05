@@ -59,10 +59,11 @@ export function parseWorldAsset(input: unknown): WorldAsset {
   const camera = value.camera as Record<string, unknown>;
   const cutouts = value.cutouts === undefined ? undefined : (() => {
     if (!Array.isArray(value.cutouts) || value.cutouts.length > 8) throw new Error("At most eight world cutouts are supported.");
-    return value.cutouts.map((cut: {min: unknown; max: unknown}) => {
+    return value.cutouts.map((cut: {min: unknown; max: unknown; yaw?: number}) => {
       const min = tuple(cut.min, 3) as [number, number, number], max = tuple(cut.max, 3) as [number, number, number];
       if (min.some((v, i) => v >= max[i])) throw new Error("World cutout bounds must have positive volume.");
-      return { min, max };
+      if (cut.yaw !== undefined && !Number.isFinite(cut.yaw)) throw new Error("Cutout yaw must be finite.");
+      return { min, max, ...(cut.yaw === undefined ? {} : { yaw: cut.yaw }) };
     });
   })();
   return {

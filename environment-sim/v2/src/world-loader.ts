@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { cutoutContains } from "./world-cutout";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { AssetTransform, WorldAsset } from "./contracts";
 import { disposeMeshes } from "./scene-resources";
@@ -70,12 +71,13 @@ export async function loadWorld(asset: WorldAsset) {
     const box = new SplatEditSdf({ type: SplatEditSdfType.BOX, opacity: 0 });
     box.position.fromArray(bounds.min).add(new THREE.Vector3().fromArray(bounds.max)).multiplyScalar(0.5);
     box.scale.fromArray(bounds.max).sub(new THREE.Vector3().fromArray(bounds.min)).multiplyScalar(0.5);
+    box.rotation.y = bounds.yaw ?? 0;
     edit.add(box); edit.sdfs = [box]; edit.updateMatrixWorld(true);
     return edit;
   });
   splats.edits = [cutaway, frontEdit, ...openings];
   const cutoutBounds = (asset.cutouts ?? []).map(bounds => new THREE.Box3(new THREE.Vector3().fromArray(bounds.min), new THREE.Vector3().fromArray(bounds.max)));
-  const raycast = (ray: THREE.Raycaster) => ray.intersectObject(collider, true).filter(hit => !cutoutBounds.some(bounds => bounds.containsPoint(hit.point)));
+  const raycast = (ray: THREE.Raycaster) => ray.intersectObject(collider, true).filter(hit => !(asset.cutouts ?? []).some(cut => cutoutContains(cut, hit.point)));
   const frontEnabled = { value: false };
   const frontEquation = { value: new THREE.Vector3() };
   const frontBase = { value: 0.65 };
@@ -87,14 +89,15 @@ export async function loadWorld(asset: WorldAsset) {
       shader.uniforms.openingCount = { value: cutoutBounds.length };
       shader.uniforms.openingMin = { value: Array.from({length: 8}, (_, i) => cutoutBounds[i]?.min ?? new THREE.Vector3()) };
       shader.uniforms.openingMax = { value: Array.from({length: 8}, (_, i) => cutoutBounds[i]?.max ?? new THREE.Vector3()) };
+      shader.uniforms.openingYaw = { value: Array.from({length: 8}, (_, i) => asset.cutouts?.[i]?.yaw ?? 0) };
       shader.vertexShader = "varying vec3 cutawayWorld;\n" + shader.vertexShader;
       shader.vertexShader = shader.vertexShader.replace("#include <begin_vertex>",
         "#include <begin_vertex>\ncutawayWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-      shader.fragmentShader = "varying vec3 cutawayWorld; uniform bool frontEnabled; uniform vec3 frontEquation; uniform float frontBase; uniform int openingCount; uniform vec3 openingMin[8]; uniform vec3 openingMax[8];\n" + shader.fragmentShader;
+      shader.fragmentShader = "varying vec3 cutawayWorld; uniform bool frontEnabled; uniform vec3 frontEquation; uniform float frontBase; uniform int openingCount; uniform vec3 openingMin[8]; uniform vec3 openingMax[8]; uniform float openingYaw[8];\n" + shader.fragmentShader;
       shader.fragmentShader = shader.fragmentShader.replace("#include <clipping_planes_fragment>",
-        "#include <clipping_planes_fragment>\nfor (int i = 0; i < 8; i++) { if (i >= openingCount) break; if (all(greaterThanEqual(cutawayWorld, openingMin[i])) && all(lessThanEqual(cutawayWorld, openingMax[i]))) discard; }\nif (frontEnabled && cutawayWorld.y > frontBase && dot(cutawayWorld.xz, frontEquation.xy) > frontEquation.z) discard;");
+        "#include <clipping_planes_fragment>\nfor (int i = 0; i < 8; i++) { if (i >= openingCount) break; vec3 center = (openingMin[i] + openingMax[i]) * 0.5; vec3 p = cutawayWorld - center; float c = cos(openingYaw[i]); float s = sin(openingYaw[i]); p = vec3(c*p.x-s*p.z,p.y,s*p.x+c*p.z)+center; if (all(greaterThanEqual(p, openingMin[i])) && all(lessThanEqual(p, openingMax[i]))) discard; }\nif (frontEnabled && cutawayWorld.y > frontBase && dot(cutawayWorld.xz, frontEquation.xy) > frontEquation.z) discard;");
     };
-    material.customProgramCacheKey = () => "house-camera-openings-v2";
+    material.customProgramCacheKey = () => "house-camera-openings-v3";
   }
   const cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 2);
   let triangles = 0;

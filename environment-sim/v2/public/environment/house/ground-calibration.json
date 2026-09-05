@@ -12,5 +12,7 @@
   "cell": 0.075,
   "radius": 0.28,
   "height": 1.7,
-  "metricStatus": "unverified"
+  "metricStatus": "unverified",
+  "houseUrl": "/environment/house/house.json",
+  "floorId": "ground"
 }

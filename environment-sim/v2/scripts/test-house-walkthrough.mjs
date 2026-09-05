@@ -12,6 +12,22 @@ try{
  assert.equal(await page.evaluate(()=>window.houseLab.viewer.destinations.children.length),0);
  assert.equal(await page.evaluate(()=>window.houseLab.viewer.hazards.root.children.length),0);
  await page.locator('[data-view="top"]').click();await page.waitForTimeout(900);await page.screenshot({path:'.artifacts/upstairs/walkthrough-upper.png'});
+ const hallPoint=await page.evaluate(()=>{
+  const {simulation:s,viewer:v}=window.houseLab,l=s.house.connections[0].stairwell;
+  const point={x:l.origin.x+Math.sin(l.yaw)*3.4,z:l.origin.z+Math.cos(l.yaw)*3.4};
+  const p=new v.camera.position.constructor(point.x,3.4,point.z).project(v.activeCamera),r=v.renderer.domElement.getBoundingClientRect();
+  return {point,x:r.x+(p.x+1)/2*r.width,y:r.y+(1-p.y)/2*r.height};
+ });
+ await page.mouse.click(hallPoint.x,hallPoint.y);
+ await page.waitForFunction(()=>window.houseLab.movement.status==='running');
+ await page.evaluate(()=>{const {simulation:s,movement:m}=window.houseLab;for(let i=0;i<5000&&m.status==='running';i++){s.advance(1/60);m.advance();}});
+ assert.equal(await page.evaluate(()=>window.houseLab.movement.status),'completed');
+ const freeHall=await page.evaluate(()=>{
+  const s=window.houseLab.simulation,before={...s.position};s.setManual();s.heading=s.house.connections[0].stairwell.yaw+Math.PI/2;
+  for(let i=0;i<20;i++){s.drive(1,0,1/60);s.advance(1/60);}s.stopManualMotion();
+  return {distance:Math.hypot(s.position.x-before.x,s.position.z-before.z),journey:s.floorJourney};
+ });
+ assert.ok(freeHall.distance>.02,'Hall permits free lateral walking');assert.equal(freeHall.journey,null);
  await page.locator('#walk-floor').click();
  await page.evaluate(()=>{const {simulation:s,movement:m}=window.houseLab;for(let i=0;i<12000&&m.status==='running';i++){s.advance(1/60);m.advance();}});
  assert.equal(await page.evaluate(()=>window.houseLab.simulation.floorId),'ground');

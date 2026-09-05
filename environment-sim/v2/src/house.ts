@@ -9,6 +9,8 @@ export type StairConnection = {
   toFloor: string;
   points: HousePoint[];
   width: number;
+  /** Photo-guided enclosure, expressed in its own architectural frame. */
+  stairwell?: { origin: HousePoint; yaw: number; approach: number; run: number; separation: number; hallLength: number; rise: number };
 };
 export type House = { id: string; floors: HouseFloor[]; connections: StairConnection[] };
 export type FloorJourney = {

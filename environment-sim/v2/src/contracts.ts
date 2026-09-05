@@ -65,7 +65,7 @@ export type AssetTransform = {
   quaternion: [number, number, number, number];
   scale: number;
 };
-export type WorldCutout = { min: [number, number, number]; max: [number, number, number] };
+export type WorldCutout = { yaw?: number; min: [number, number, number]; max: [number, number, number] };
 export type WorldAsset = {
   /** Authored openings in simulation world coordinates, applied to appearance and depth. */
   cutouts?: WorldCutout[];

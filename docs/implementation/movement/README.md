@@ -4,9 +4,9 @@ Implementation dated September 5, 2026. Builds on the connected two-floor enviro
 
 ## Interaction
 
-Open **http://127.0.0.1:5174/simulation.html?house=1** for Path Studio. The simpler walkthrough at **http://127.0.0.1:5174/?house=1** supports WASD, click walking and floor transfers without the sidebar. The teammate's original manual ground-room view remains at `/`. Click a visible floor to walk to that point. Drag still orbits. Shift-click appends waypoints to Path Studio. Use Map when selecting exact floor points; furniture, walls and unverified grid regions are not valid targets.
+Open **http://127.0.0.1:5174/?house=1** for the two-floor walkthrough. The development scenario controls remain at **http://127.0.0.1:5174/simulation.html?house=1**. The ordinary manual ground-room view remains at `/`.
 
-Path Studio accepts editable JSON, adds waits, loops, imports/exports and stops movement at the current position. A blocked command stops the program and offers Retry after clearing the obstruction. Picking a point on the other visible floor programs the stair transfer followed by the point request.
+Click a visible floor to walk; drag to orbit. Map helps inspect reachable space. The Path Studio panel and Edit path link were removed at the user's request: teammates author programs through the API below. There is no Shift-click editor or import/export path UI. The studio's existing scenario export still includes the movement snapshot.
 
 WASD/arrows take over from the current path. Diagonal movement slides along a clear axis when the full step is blocked, retaining the existing clearance checks. Walk toward a supported stair endpoint to enter it without a floor button. On the stairs, W moves forward, S backs along the connector, and releasing the key stops. Stop here also leaves the resident supported on the stairs. Turning/lateral movement on the narrow connector is constrained to its checked centerline; this is not unrestricted stair physics. Backtracking to the starting endpoint returns control on the original floor.
 
@@ -41,13 +41,13 @@ Step types:
 | `floor` | `floor` | Traverse a direct stair connection to that floor |
 | `wait` | `seconds` | Wait using simulation time; pause freezes it |
 
-Programs are JSON data, not evaluated JavaScript. Validation accepts 1–256 steps and finite coordinates/waits. Floor and destination references are checked before movement begins; actual reachability is checked as each step starts. A new script cannot start midway through a stair transfer or fall; finish/backtrack first. Reset cancels the program. Import/export files contain the command list, not large world assets.
+Programs are JSON data, not evaluated JavaScript. Validation accepts 1–256 steps and finite coordinates/waits. Floor and destination references are checked before movement begins; actual reachability is checked as each step starts. A new script cannot start midway through a stair transfer or fall; finish/backtrack first. Reset cancels the program. Agents can store the command list in JSON and pass it to `run()`; it contains no world assets.
 
 ## Ownership for parallel agents
 
 - Environment contributor: floor grids, assets, transforms, connection endpoints.
 - Movement contributor: `movement/program.ts`, `stair-motion.ts`, point requests and manual movement behavior.
-- UI contributor: `movement/studio.ts` is optional and separate from the executor.
+- UI contributor: `movement/pointer.ts` handles click walking on both pages, separately from the executor.
 - Character contributor: consumes the same position/elevation/heading and actual travel; never moves the actor root independently.
 - Integration owner: keeps one loop per page (`main.ts` walkthrough, `studio.ts` authoring studio) and coordinates changes to `simulation.ts`/`viewer.ts` with hazard work. Do not fork a competing v2 folder.
 
@@ -55,7 +55,7 @@ Programs are JSON data, not evaluated JavaScript. Validation accepts 1–256 ste
 
 ## Validation
 
-Unit checks cover arbitrary targets, obstacle replanning, cross-floor programs, paused waits, retries/manual cancellation, staircase entry/reversal, wall sliding, malformed input and bounded zero-wait loops. Browser checks exercise real canvas clicks, Shift-click waypoints, wait editing, Stop here, WASD takeover on stairs, reversal and mobile layout.
+Unit checks cover arbitrary targets, obstacle replanning, cross-floor programs, paused waits, retries/manual cancellation, staircase entry/reversal, wall sliding, malformed input and bounded zero-wait loops. Browser checks exercise canvas clicks, API-authored sequences, stopping, WASD takeover on stairs, reversal and mobile layout. The house walkthrough also checks clicking the authored hall floor and free lateral movement there.
 
 Run `npm run test:movement`, `npm run test:house`, and `npm test`. With Vite running, use `npm run test:movement:browser` and `npm run test:house:browser`. The latest remote manual walkthrough and hazard/recovery changes were merged locally from `a78d2e9`. The detector now follows the active floor, transfer motion suppresses automatic falls, and hazard recovery resumes arbitrary point targets as well as named destinations. The default walkthrough keeps hazards and markers disabled on both floors. These changes remain on the feature branch pending push approval.
 
@@ -67,15 +67,11 @@ Recommended two-minute review:
 
 1. Open the connected walkthrough, move with WASD and try First person/Wide/Top down.
 2. Choose Walk upstairs; press W to take control, release to stop, then S to backtrack. Resume W to reach the bedroom, then return downstairs.
-3. Open Path Studio, select Map and Shift-click two reachable points. Add a wait, run the path, then take over with WASD.
-4. Use Example to load a cross-floor program. Edit the JSON and export it for another agent.
+3. Upstairs, click the hall floor, then use WASD to move and turn freely. Only the flights use constrained stair travel.
+4. From the browser console or a teammate's host, call `window.houseLab.movement.run()` with the example above (named destinations are available in the studio; the clean walkthrough intentionally omits destination annotations).
 
 No grandma mesh replacement was bundled into this change. That remains a separate adapter task; the downloaded model has only an idle clip. The spatial navigation region is still conservative, and stairs constrain manual travel to a checked connector. Additional upstairs rooms and foot-contact physics remain future work.
 
 ## Recorded integration checks
 
-The shared simulation/hazard suite (27), house suite (5) and movement suite (8) pass: **40 tests**. The production build passes; Spark/Three still emit the existing large-bundle advisory. Actual-asset stair clearance passes at 189 sampled positions.
-
-Browser suites passed for flexible movement, the connected house studio, the connected simple walkthrough, the original manual walkthrough, combined routing/occlusion, cutaways, keyboard controls, hazard alerts, automatic fall/recovery, and Unitree model switching. The final focused rerun also passed with the newest remote posture tuning: production build, all 40 unit/state tests, Unitree switching, the connected walkthrough and room-fall browser checks.
-
-The most recent remote snapshot is `a78d2e9` (grandma posture tuning). Its character implementation is preserved. Generated assets are referenced by public manifests and fetched with checksums; source assets are not embedded in Git. Documentation, example commands, tests and calibration data are committed in the repository rather than the private preparation workspace.
+See [validation.json](validation.json) for the dated current results and [the layout/access review](../upstairs/layout-access-review.md) for the new enclosure, hallway and finer navigation bake. Earlier validation of the removed Path Studio UI is superseded. The teammate's posture, hazard and recovery modules are preserved. Local commits await approval before pushing.

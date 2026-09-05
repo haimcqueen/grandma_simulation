@@ -1,3 +1,5 @@
+import {cutoutContains} from '../src/world-cutout.ts';
+import {buildStairStructure} from '../src/stair-structure.ts';
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -11,7 +13,12 @@ for(const floor of house.floors){
  const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
  const transform=asset.colliderTransform;gltf.scene.position.fromArray(transform.position);gltf.scene.quaternion.fromArray(transform.quaternion);gltf.scene.scale.setScalar(transform.scale);gltf.scene.updateMatrixWorld(true);
  const trees=[];gltf.scene.traverse(child=>{if(child.isMesh)trees.push(new MeshBVH(child.geometry.clone().applyMatrix4(child.matrixWorld)));});
- worlds.push({id:floor.id,trees,cutouts:asset.cutouts.map(b=>new THREE.Box3(new THREE.Vector3(...b.min),new THREE.Vector3(...b.max)))});
+ worlds.push({id:floor.id,trees,cutouts:asset.cutouts ?? []});
+}
+for(const link of house.connections){
+ const structure=buildStairStructure(link),trees=[];
+ structure.traverse(child=>{if(child.isMesh)trees.push(new MeshBVH(child.geometry.clone().applyMatrix4(child.matrixWorld)));});
+ worlds.push({id:'authored-stairwell',trees,cutouts:[]});
 }
 const contacts=[];let samples=0;
 for(const link of house.connections)for(let i=1;i<link.points.length;i++){
@@ -23,8 +30,9 @@ for(const link of house.connections)for(let i=1;i<link.points.length;i++){
   const bounds=new THREE.Box3().setFromPoints([capsule.start,capsule.end]).expandByScalar(.28);
   for(const world of worlds){let contact;
    const blocked=world.trees.some(tree=>tree.shapecast({intersectsBounds:b=>bounds.intersectsBox(b),intersectsTriangle:tri=>{
+    if(world.id === "authored-stairwell" && Math.max(tri.a.y,tri.b.y,tri.c.y) <= position.y + .18) return false;
     const point=new THREE.Vector3();const distance=tri.closestPointToSegment(capsule,point);
-    if(distance>=.28||world.cutouts.some(b=>b.containsPoint(point)))return false;
+    if(distance>=.28||world.cutouts.some(b=>cutoutContains(b,point)))return false;
     contact=point.toArray();return true;
    }}));
    if(blocked)contacts.push({floor:world.id,segment:i,position:position.toArray(),contact});

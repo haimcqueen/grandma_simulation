@@ -10,9 +10,11 @@ The v1-style movement loop now runs **inside the photo-guided Tantau room**. The
 
 See the [v2.1 handoff](../../docs/implementation/v2.1/README.md) for realistic camera/cutaway behavior, teammate merge guidance, checks and limitations. V2.1 is an update to this application, not a separate source folder.
 
-The **connected upstairs milestone** is available at **http://127.0.0.1:5174/?house=1**. It adds a photo-guided primary bedroom, an authored U-shaped stair/landing connection, continuous return journeys, and per-floor views. See the [upstairs handoff](../../docs/implementation/upstairs/README.md) for assets, spatial assumptions and extension points.
+The **connected upstairs milestone** is available at **http://127.0.0.1:5174/?house=1**. It adds a photo-guided primary bedroom, a foyer-side enclosed U-shaped stair and independently walkable upper hall, continuous return journeys, and per-floor views. See the [upstairs handoff](../../docs/implementation/upstairs/README.md) for assets, spatial assumptions and extension points.
 
-See the [flexible movement handoff](../../docs/implementation/movement/README.md) for click-to-walk, editable waypoint/wait programs, reversible WASD stairs, and current remote integration notes. Full authoring controls are at **http://127.0.0.1:5174/simulation.html?house=1**.
+See the [layout and access review](../../docs/implementation/upstairs/layout-access-review.md) for photo evidence, the stair correction, navigation changes and remaining limitations. No new splat was generated for that revision.
+
+See the [flexible movement handoff](../../docs/implementation/movement/README.md) for click-to-walk, agent-authored waypoint/wait programs, reversible WASD stairs, and current remote integration notes. Development scenario controls are at **http://127.0.0.1:5174/simulation.html?house=1**.
 
 ## Run and view
 
@@ -92,9 +94,9 @@ Rendering draws splat color first, then collider depth and the character/props. 
 
 Meters are estimated, seconds use a fixed 1/60 simulation step, right-handed Y-up, quaternion order `[x,y,z,w]`. The ground room's appearance and collider use X rotation 180°, scale 1.905 and position `[0,1.2954,0]`. This normalizes an inferred 1.6-unit floor/ceiling separation against the listing's 10-foot ceiling. `metricStatus` stays `unverified`.
 
-The navigation grid has 520 accepted cells, with destinations in its largest connected area, at 0.15 m spacing for radius 0.28 m and height 1.7 m. The bake includes cell-diagonal clearance and floor support checks, tolerating geometry within 0.12 m of the floor as noise. It does not establish whole-house accessibility or small-trip-hazard detection. Unseen rooms, dimensions and some furnishings are generated approximations; some views soften or distort. The connected house mode adds a separately generated bedroom with its own transform and grid; consult its handoff before changing placement.
+The navigation grid has 2,392 accepted cells, with destinations in its largest connected area, at 0.075 m spacing for radius 0.28 m and height 1.7 m. The bake includes cell-diagonal clearance and floor support checks, tolerating geometry within 0.12 m of the floor as noise. It does not establish whole-house accessibility or small-trip-hazard detection. Unseen rooms, dimensions and some furnishings are generated approximations; some views soften or distort. The connected house mode adds a separately generated bedroom with its own transform and grid; consult its handoff before changing placement.
 
-Rebake with `node scripts/bake-navigation.mjs world.json collider.glb calibration.json navigation.json` after changing the source geometry or movement dimensions. Verify anchors again after recalibration. Furniture baked into the splats cannot be moved by merely moving a proxy.
+Rebake with `npx tsx scripts/bake-navigation.mjs world.json collider.glb calibration.json navigation.json` after changing the source geometry or movement dimensions. Verify anchors again after recalibration. Furniture baked into the splats cannot be moved by merely moving a proxy.
 
 ## Validation
 

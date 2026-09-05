@@ -1,56 +1,48 @@
 {
   "id": "tantau-primary-navigation",
-  "label": "Upstairs primary bedroom",
-  "provenance": "Photo-guided bedroom, generated unseen surfaces and estimated scale; authored doorway connection.",
+  "label": "Upper hall and primary bedroom",
+  "provenance": "Photo-guided primary bedroom with a plan-informed authored hall and foyer stairwell; generated room geometry and scale remain approximate.",
   "floor": {
-    "x": 1.775,
-    "z": 0.225,
-    "width": 6.8,
-    "depth": 7.5
+    "x": -5.3,
+    "z": -5.5,
+    "width": 11.4,
+    "depth": 11.2
   },
   "floorY": 3.4,
   "objects": [],
   "spawn": {
-    "x": 0.325,
-    "z": -2.575
+    "x": -1.175,
+    "z": -0.5508330249197706
   },
   "destinations": [
     {
+      "x": -1.175,
+      "z": -0.5508330249197706,
       "id": "landing",
-      "label": "Bedroom entrance",
-      "x": 0.325,
-      "z": -2.575
+      "label": "Upper stair landing"
     },
     {
       "id": "primary",
       "label": "Foot of bed",
-      "x": 1.225,
-      "z": -1.175
+      "x": -4.754422863405995,
+      "z": -4.950575286112626
     },
     {
       "id": "window",
       "label": "Bedside passage",
-      "x": 3.425,
-      "z": 0.125
+      "x": -7.3096787517317585,
+      "z": -4.9764083110323964
+    },
+    {
+      "x": -3.2749999999999995,
+      "z": -4.188139720814411,
+      "id": "bedroom-entry",
+      "label": "Primary bedroom door"
     }
   ],
   "passage": {
-    "x": 0.625,
-    "z": -1.925
-  },
-  "scenarioFootprints": {
-    "cart": {
-      "x": 0.625,
-      "z": -1.925,
-      "width": 0.45,
-      "depth": 0.4
-    },
-    "blocked": {
-      "x": 0.825,
-      "z": -1.925,
-      "width": 2.5,
-      "depth": 0.25
-    }
+    "x": -3.859807621135331,
+    "z": -4.601056233274297
   },
   "navigationUrl": "/environment/house/upper-navigation.json"
 }

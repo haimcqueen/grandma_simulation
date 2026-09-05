@@ -654,6 +654,7 @@ export class Viewer {
     }
     if (this.view === "map") {
       this.topControls.update();
+      this.renderer.resetState();
       this.renderer.autoClear = true;
       this.renderer.render(this.topScene, this.topCamera);
     } else if (this.mode === "fixture") {

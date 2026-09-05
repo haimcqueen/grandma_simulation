@@ -8,6 +8,7 @@ try {
  await page.goto(process.env.BASE_URL || 'http://127.0.0.1:5174/');
  await page.waitForFunction(()=>window.houseLab?.viewer.animatedResident?.robot,undefined,{timeout:90000});
  assert.equal(await page.locator('aside').count(),0);
+ assert.equal(await page.locator('.fall-danger').isVisible(),false);
  assert.equal(await page.evaluate(()=>window.houseLab.viewer.roomObjects.children.length),1);
  assert.equal(await page.evaluate(()=>window.houseLab.viewer.floorRepairs.children.length),1);
  assert.equal(await page.evaluate(()=>!!window.houseLab.viewer.world.cutaway.getObjectByName('Replaced furniture')),true);
@@ -34,8 +35,17 @@ try {
   await page.waitForFunction(()=>window.houseLab.simulation.fall?.autoRecover);
   await page.keyboard.up('ArrowUp');
   await page.waitForFunction(()=>window.houseLab.simulation.status==='fallen');
+  assert.equal(await page.locator('.fall-danger').isVisible(),true);
+  assert.equal(await page.locator('.fall-danger [data-title]').innerText(),'Living-room ottoman');
+  assert.equal(await page.locator('[data-rating="likelihood"] strong').innerText(),'High');
+  assert.equal(await page.locator('[data-rating="intensity"] strong').innerText(),'Moderate');
+  assert.equal(await page.locator('[data-rating="likelihood"] .filled').count(),3);
+  assert.equal(await page.locator('[data-rating="intensity"] .filled').count(),2);
   await page.screenshot({path:`.artifacts/ottoman-${view}-fallen.png`});
+  await page.waitForFunction(()=>window.houseLab.simulation.status==='recovering');
+  assert.equal(await page.locator('.fall-danger [data-phase]').innerText(),'Getting back up');
   await page.waitForFunction(()=>window.houseLab.simulation.fall===null);
+  assert.equal(await page.locator('.fall-danger').isVisible(),false);
   const result=await page.evaluate(()=>{window.ottomanCheck.active=false;return {check:window.ottomanCheck,state:window.houseLab.simulation.snapshot(),view:window.houseLab.viewer.view};});
   assert.ok(result.check.frames>60);
   assert.equal(result.check.maxOverlap,0,'No posed body link enters the solid ottoman');
@@ -72,6 +82,18 @@ try {
  });
  for(const color of colors) assert.ok(color.slice(0,3).every(c=>c>80),`Floor gap: ${color}`);
  await page.screenshot({path:'.artifacts/ottoman-repaired-floor.png'});
+ // A manual fall must not inherit the previous hazard's rating.
+ await page.evaluate(()=>window.houseLab.simulation.playFall('sideways'));
+ await page.waitForFunction(()=>!document.querySelector('.fall-danger').hidden);
+ assert.equal(await page.locator('.fall-danger [data-title]').innerText(),'Simulated fall');
+ assert.equal(await page.locator('[data-rating="likelihood"] strong').innerText(),'Not rated');
+ assert.equal(await page.locator('.fall-danger .filled').count(),0);
+ await page.setViewportSize({width:390,height:844});
+ const panel=await page.locator('.fall-danger').boundingBox();
+ assert.ok(panel.x>=0 && panel.x+panel.width<=390 && panel.y>=0 && panel.y+panel.height<760);
+ await page.keyboard.press('KeyR');
+ await page.waitForFunction(()=>document.querySelector('.fall-danger').hidden);
+ assert.equal(await page.locator('.fall-danger').isVisible(),false);
  assert.deepEqual(errors,[]);
  console.log('Ottoman passed: one replacement, repaired floor, solid walking collision, manual contact/fall/recovery in first and third person, body-link clearance and all views.');
 } finally {await browser.close();}

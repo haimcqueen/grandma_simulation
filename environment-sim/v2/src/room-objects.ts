@@ -13,6 +13,7 @@ export const tantauOttoman: RoomObject = {
   position: [0.64, 0.02, -2.84], size: [0.74, 0.54, 0.8],
   replacement: { min: [-0.02, -0.12, -3.48], max: [1.23, 0.78, -2.05] },
   hazard: { hazardId: "ottoman", x: 0.64, z: -2.84, radius: 1.05, room: "Living-room ottoman",
+    danger: { likelihood: "high", intensity: "medium" },
     obstacle: { solidId: "living-room-ottoman" } },
 };
 

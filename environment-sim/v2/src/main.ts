@@ -1,3 +1,6 @@
+import * as THREE from "three";
+import { rebuildReplacementNavigation } from "./replacement-navigation";
+import { tantauOttoman, loadRoomObject } from "./room-objects";
 import { parseWorldAsset } from "./asset-manifest";
 import type { Environment } from "./contracts";
 import { createKeyboardControls } from "./keyboard-controls";
@@ -34,7 +37,7 @@ function selectView(view: WalkthroughView) {
     : "Drag to orbit · Scroll to zoom";
 }
 const keyboard = createKeyboardControls(window, {
-  canDrive: () => ready,
+  canDrive: () => ready && !simulation?.fall,
   onDriveStart: () => simulation?.setManual(),
   onClear: () => simulation?.stopManualMotion(),
   onShortcut: event => {
@@ -66,13 +69,30 @@ async function start() {
     const environment: Environment = bundle.environment ?? await loadSimulationEnvironment("/environment/tantau-simulation.json");
     validateSimulationEnvironment(environment);
     if (disposed) return;
-    simulation = createWalkthroughSimulation(environment);
+    const furniture = asset.id === "tantau-great-room" ? [tantauOttoman] : [];
+    simulation = createWalkthroughSimulation(environment, furniture.map(object => object.hazard));
     nextViewer = new Viewer(viewport, simulation.environment);
     viewer = nextViewer;
     viewer.hazardPropsVisible = false;
-    const loaded = await Promise.allSettled([viewer.loadRobot("grandma"), viewer.showWorld(asset)]);
+    const loaded = await Promise.allSettled([viewer.loadRobot("grandma"), viewer.showWorld(asset), ...furniture.map(async object => {
+      const root = await loadRoomObject(object);
+      viewer!.roomObjects.add(root); root.updateMatrixWorld(true);
+      const floor = root.getObjectByName("replacement-floor");
+      if (floor) viewer!.floorRepairs.attach(floor);
+    })]);
     if (disposed) return;
     if (loaded.some(result => result.status === "rejected")) throw new Error("Room or resident unavailable");
+    let walkingEnvironment = environment;
+    for (const object of furniture) {
+      const region = new THREE.Box3(new THREE.Vector3(...object.replacement.min), new THREE.Vector3(...object.replacement.max));
+      viewer.world!.removeObjectRegion(region, object.position[1]);
+      walkingEnvironment = rebuildReplacementNavigation(walkingEnvironment, viewer.world!.collider, region);
+    }
+    walkingEnvironment = { ...walkingEnvironment, objects: [...walkingEnvironment.objects, ...furniture.map(object => ({
+      id: object.id, label: "Ottoman", kind: "obstruction" as const, x: object.position[0], z: object.position[2],
+      width: object.size[0], depth: object.size[2], height: object.size[1],
+    }))] };
+    simulation = createWalkthroughSimulation(walkingEnvironment, furniture.map(object => object.hazard));
     viewer.activateWorldSimulation(simulation.environment);
     viewer.destinations.visible = false;
     viewer.marker.root.visible = false;

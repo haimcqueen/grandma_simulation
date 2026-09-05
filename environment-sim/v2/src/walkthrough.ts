@@ -1,11 +1,12 @@
 import type { Environment } from "./contracts";
+import type { RoomHazardZone } from "./hazards";
 import { Simulation } from "./simulation";
 
 /** A manual-only room session. Source environment data remains reusable by other hosts. */
-export function createWalkthroughSimulation(environment: Environment) {
-  const simulation = new Simulation({ ...environment, hazardZones: [], destinations: [] });
-  simulation.autoHazardFalls = false;
-  simulation.setHazardProfile("off");
+export function createWalkthroughSimulation(environment: Environment, hazards: RoomHazardZone[] = []) {
+  const simulation = new Simulation({ ...environment, hazardZones: hazards, destinations: [] });
+  simulation.autoHazardFalls = hazards.length > 0;
+  simulation.setHazardProfile(hazards.length ? "auto" : "off");
   simulation.setManual();
   return simulation;
 }

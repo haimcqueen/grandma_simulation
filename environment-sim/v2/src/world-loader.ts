@@ -66,17 +66,23 @@ export async function loadWorld(asset: WorldAsset) {
   const frontEnabled = { value: false };
   const frontEquation = { value: new THREE.Vector3() };
   const frontBase = { value: 0.65 };
+  const replacementCount = { value: 0 };
+  const replacementMin = { value: Array.from({ length: 8 }, () => new THREE.Vector3()) };
+  const replacementMax = { value: Array.from({ length: 8 }, () => new THREE.Vector3()) };
   for (const material of [depthMaterial, wireMaterial]) {
     material.onBeforeCompile = (shader) => {
+      shader.uniforms.replacementCount = replacementCount;
+      shader.uniforms.replacementMin = replacementMin;
+      shader.uniforms.replacementMax = replacementMax;
       shader.uniforms.frontEnabled = frontEnabled;
       shader.uniforms.frontEquation = frontEquation;
       shader.uniforms.frontBase = frontBase;
       shader.vertexShader = "varying vec3 cutawayWorld;\n" + shader.vertexShader;
       shader.vertexShader = shader.vertexShader.replace("#include <begin_vertex>",
         "#include <begin_vertex>\ncutawayWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-      shader.fragmentShader = "varying vec3 cutawayWorld; uniform bool frontEnabled; uniform vec3 frontEquation; uniform float frontBase;\n" + shader.fragmentShader;
+      shader.fragmentShader = "uniform int replacementCount; uniform vec3 replacementMin[8]; uniform vec3 replacementMax[8]; varying vec3 cutawayWorld; uniform bool frontEnabled; uniform vec3 frontEquation; uniform float frontBase;\n" + shader.fragmentShader;
       shader.fragmentShader = shader.fragmentShader.replace("#include <clipping_planes_fragment>",
-        "#include <clipping_planes_fragment>\nif (frontEnabled && cutawayWorld.y > frontBase && dot(cutawayWorld.xz, frontEquation.xy) > frontEquation.z) discard;");
+        "#include <clipping_planes_fragment>\nif (frontEnabled && cutawayWorld.y > frontBase && dot(cutawayWorld.xz, frontEquation.xy) > frontEquation.z) discard;\nfor (int i = 0; i < 8; i++) { if (i >= replacementCount) break; if (all(greaterThanEqual(cutawayWorld, replacementMin[i])) && all(lessThanEqual(cutawayWorld, replacementMax[i]))) discard; }");
     };
     material.customProgramCacheKey = () => "house-camera-cut-v1";
   }
@@ -129,6 +135,41 @@ export async function loadWorld(asset: WorldAsset) {
       wireMaterial.clippingPlanes = height === null ? null : [cutPlane];
       depthMaterial.needsUpdate = true;
       wireMaterial.needsUpdate = true;
+    },
+    removeObjectRegion(bounds: THREE.Box3, floorY: number) {
+      if (replacementCount.value >= 8) throw new Error("At most eight replacement regions are supported.");
+      replacementMin.value[replacementCount.value].copy(bounds.min);
+      replacementMax.value[replacementCount.value++].copy(bounds.max);
+      const edit = new SplatEdit({ name: "Replaced furniture", softEdge: 0 });
+      const box = new SplatEditSdf({ type: SplatEditSdfType.BOX, opacity: 0 });
+      bounds.getCenter(box.position);
+      bounds.getSize(box.scale).multiplyScalar(0.5);
+      edit.add(box); edit.sdfs = [box]; cutaway.add(edit);
+      cutaway.updateMatrixWorld(true);
+      // Remove the same original furniture triangles from collider and shared depth geometry.
+      const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), center = new THREE.Vector3();
+      collider.traverse(child => {
+        if (!(child instanceof THREE.Mesh)) return;
+        const geometry = child.geometry, positions = geometry.getAttribute("position"), index = geometry.index;
+        const kept: number[] = [];
+        for (let i = 0; i < (index?.count ?? positions.count); i += 3) {
+          const ia = index ? index.getX(i) : i, ib = index ? index.getX(i + 1) : i + 1, ic = index ? index.getX(i + 2) : i + 2;
+          a.fromBufferAttribute(positions, ia).applyMatrix4(child.matrixWorld);
+          b.fromBufferAttribute(positions, ib).applyMatrix4(child.matrixWorld);
+          c.fromBufferAttribute(positions, ic).applyMatrix4(child.matrixWorld);
+          center.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+          if (!bounds.containsPoint(center)) kept.push(ia, ib, ic);
+        }
+        geometry.setIndex(kept);
+      });
+      // The scan has no floor under the old furniture. Restore only that footprint.
+      const size = bounds.getSize(new THREE.Vector3()), midpoint = bounds.getCenter(new THREE.Vector3());
+      const support = new THREE.Mesh(new THREE.PlaneGeometry(size.x, size.z), depthMaterial);
+      support.rotation.x = -Math.PI / 2;
+      support.position.set(midpoint.x, floorY, midpoint.z);
+      support.updateMatrix();
+      support.applyMatrix4(collider.matrixWorld.clone().invert());
+      collider.add(support); collider.updateMatrixWorld(true);
     },
     collider,
     depth,

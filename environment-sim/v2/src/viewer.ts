@@ -36,6 +36,8 @@ export class Viewer {
   );
   readonly debug = new THREE.Group();
   readonly destinations = new THREE.Group();
+  readonly floorRepairs = new THREE.Scene();
+  readonly roomObjects = new THREE.Group();
   readonly hazards = new RoomHazardView();
   hazardPropsVisible = true;
   get asset() { return this.worldAsset; }
@@ -257,7 +259,7 @@ export class Viewer {
     this.controls.update();
   }
   private attachSimulation(parent: THREE.Object3D) {
-    parent.add(this.resident.root, this.dynamic, this.route, this.debug, this.destinations, this.hazards.root);
+    parent.add(this.resident.root, this.dynamic, this.route, this.debug, this.destinations, this.hazards.root, this.roomObjects);
   }
   async loadResident(assets: ResidentAssets) {
     return this.replaceResident(() => loadAnimatedResident(assets));
@@ -504,11 +506,16 @@ export class Viewer {
       this.renderer.clearDepth();
       this.world.depth.visible = this.worldDepth;
       this.world.wire.visible = this.debugVisible;
+      this.renderer.render(this.floorRepairs, this.camera);
       this.renderer.render(this.overlayScene, this.camera);
       this.renderer.autoClear = true;
     }
   }
   dispose() {
+    disposeMeshes(this.floorRepairs, true);
+    this.floorRepairs.clear();
+    disposeMeshes(this.roomObjects, true);
+    this.roomObjects.clear();
     this.hazards.dispose();
     this.loadRevision++;
     this.residentRevision++;

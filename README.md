@@ -8,6 +8,8 @@ STGS explores how interactive simulation can help identify potential household h
 
 Starting from photographs of a living space, we create an explorable 3D environment to examine how everyday objects and layouts affect movement and safety. The prototype demonstrates scenarios such as potential fall risks, using simulated interactions to illustrate hazards and present prevention recommendations informed by NIH and CDC guidance.
 
+**We used World Labs’ Marble via Mint to generate photo-guided 3D environments as Gaussian splats with matching collision meshes, and Tripo to create objects for household hazard scenarios. These assets come together in Three.js with navigation and interactive characters.**
+
 Thanks to **Founders Inc., Mint, Tripo, World Labs, and Convex** for supporting the event.
 
 **[Presentation slides](https://canva.link/7pzzwal00fv0sf8)**
@@ -28,9 +30,9 @@ Explore the home, switch between Unitree and grandma, and encounter simulated ha
 
 ## How it works
 
-- **Environment:** Mint’s World Labs integration generates photo-guided 3D spaces. Spark renders the Gaussian splats inside Three.js, with matching collision geometry supporting navigation.
-- **Objects and characters:** Tripo-generated objects add controllable geometry for household hazard scenarios. Unitree and grandma share movement and animation logic.
-- **Safety scenarios:** Configured encounters trigger simulated responses, explanatory cards, and prevention suggestions informed by NIH/NIA and CDC guidance.
+- **Generate the environment:** Room photographs guide World Labs’ Marble, accessed via Mint, to produce Gaussian splats and matching collision meshes. Spark renders the splats inside Three.js.
+- **Make it interactive:** Tripo-generated objects add controllable geometry for hazard scenarios. Navigation uses collision-derived data to guide movement, while Unitree and grandma share animation logic.
+- **Explain the hazards:** Configured encounters trigger simulated responses and explanatory cards with scenario ratings and practical home-safety suggestions informed by NIH/NIA and CDC guidance.
 
 The prototype uses approximate geometry and authored scenarios; its ratings are not clinically validated injury predictions.
 

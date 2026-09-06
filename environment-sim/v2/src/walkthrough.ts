@@ -5,7 +5,7 @@ import { Simulation } from "./simulation";
 
 /** A manual-only room session. Source environment data remains reusable by other hosts. */
 export function createWalkthroughSimulation(environment: Environment, hazards: RoomHazardZone[] = []) {
-  const simulation = new Simulation({ ...environment, hazardZones: hazards, destinations: [] });
+  const simulation = new Simulation({ ...environment, hazardZones: hazards, destinations: [] }, Math.PI);
   simulation.autoHazardFalls = hazards.length > 0;
   simulation.setHazardProfile(hazards.length ? "auto" : "off");
   simulation.setManual();

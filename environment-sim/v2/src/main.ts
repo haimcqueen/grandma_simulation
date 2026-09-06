@@ -159,6 +159,8 @@ async function start() {
         onMessage: message => { document.querySelector<HTMLElement>("#movement-status")!.textContent = message; },
       });
     }
+    viewer.resident.root.rotation.set(0, simulation.heading, 0);
+    viewer.update(simulation);
     ready = true;
     selectView("follow");
     for (const button of buttons) button.disabled = false;

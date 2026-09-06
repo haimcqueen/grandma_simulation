@@ -61,7 +61,8 @@ export class Simulation {
   revision = 0;
   events: SimulationEvent[] = [];
   profile: MovementProfile = { speed: postures.grandma.speed, radius: 0.28, height: 1.7 };
-  constructor(public environment: Environment) {
+  constructor(public environment: Environment, private readonly initialHeading = 0) {
+    this.heading = initialHeading;
     this.position = { ...environment.spawn };
     this.fallOrigin = { ...this.position };
     this.record("ready", "Resident ready. Choose a destination.", [
@@ -491,7 +492,7 @@ export class Simulation {
     this.currentSpeed = 0;
     this.gaitPhase = 0;
     this.position = { ...this.environment.spawn };
-    this.heading = 0;
+    this.heading = this.initialHeading;
     this.route = [];
     this.destination = null;
     this.status = "idle";

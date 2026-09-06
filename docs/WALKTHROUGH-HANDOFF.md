@@ -44,3 +44,5 @@ npm run test:walkthrough
 ```
 
 Build and all 27 shared simulation/hazard tests pass. The walkthrough browser check verifies a stationary start, no sidebar/props/markers, keyboard movement and braking in all four views, persistent view selection, movement across a former hazard area without falling, room collision, mobile layout, loading failure and retry. Desktop camera screenshots and mobile screenshots are saved under ignored `.artifacts/walkthrough-*.png` and were visually reviewed.
+
+The walkthrough starts and resets facing −Z (`Math.PI`), 180° from the original heading. The body and third-person camera are aligned before the first visible frame. The walkthrough has no Force fall control; chair and ottoman contacts still trigger their authored falls. `Simulation` accepts an optional initial heading so other hosts can retain their own orientation.

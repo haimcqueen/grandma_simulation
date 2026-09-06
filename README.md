@@ -1,58 +1,52 @@
-# House Lab
+# STGS — Save the Grannys Simulation
 
-**Current experience:** a clean, manual room walkthrough. See the [walkthrough handoff](docs/WALKTHROUGH-HANDOFF.md).
+**🥈 Second place · [Spatial Intelligence + Generative 3D Hackathon](https://luma.com/b101ml40)**<br>
+Track 2: Physical AI & Simulation · September 5, 2026 · San Francisco<br>
+Built by **Hai Bui, Katherine Wang, and Sean Tey**
 
-**Collaborators:** start with the [Unitree integration and reuse guide](docs/UNITREE-COLLABORATOR-GUIDE.md).
+STGS explores how interactive simulation can help identify potential household hazards and suggest ways to make homes safer for older adults.
 
-A full-screen realistic room with the team's Unitree G1 grandma. Walk with arrow keys or WASD and choose First person, Third person, Wide or Map. The default experience has no automatic walking or sidebar; the teammate's textured ottoman replaces the scanned object and supplies a single contact hazard. Shared simulation and character modules remain reusable in **`environment-sim/v2/`**.
+Starting from photographs of a living space, we create an explorable 3D environment to examine how everyday objects and layouts affect movement and safety. The prototype demonstrates scenarios such as potential fall risks, using simulated interactions to illustrate hazards and present prevention recommendations informed by NIH and CDC guidance.
 
-## Quick start
+Thanks to **Founders Inc., Mint, Tripo, World Labs, and Convex** for supporting the event.
 
-Use Node 22.12+ or 24+:
+**[Presentation slides](https://canva.link/7pzzwal00fv0sf8)**
+
+## Demo
+
+![STGS walkthrough and household hazard demonstration](docs/media/STGS-demo.gif)
+
+Explore the home, switch between Unitree and grandma, and encounter simulated hazards with explanations and prevention suggestions.
+
+![Hazard explanation and home-safety recommendations](docs/media/fall-risk-sample.jpg)
+
+| Third-person exploration | World overview |
+| --- | --- |
+| ![Unitree in the living room](docs/media/thirdpov-sample.jpg) | ![Generated room overview](docs/media/wide-view-sample.jpg) |
+
+## How it works
+
+- **Environment:** Mint’s World Labs integration generates photo-guided 3D spaces. Spark renders the Gaussian splats inside Three.js, with matching collision geometry supporting navigation.
+- **Objects and characters:** Tripo-generated objects add controllable geometry for household hazard scenarios. Unitree and grandma share movement and animation logic.
+- **Safety scenarios:** Configured encounters trigger simulated responses, explanatory cards, and prevention suggestions informed by NIH/NIA and CDC guidance.
+
+The prototype uses approximate geometry and authored scenarios; its ratings are not clinically validated injury predictions.
+
+## Run locally
+
+Requires **Node.js 22.12+ or 24+**.
 
 ```sh
-cd environment-sim/v2
+git clone https://github.com/haimcqueen/grandma_simulation.git
+cd grandma_simulation/environment-sim/v2
 npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5174/**. The room and collider load from public runtime URLs without Mint authentication or API keys. Grandma waits for keyboard input. Release movement keys to stop. Camera shortcuts: F / V / B / M; R resets her position.
+Open **http://127.0.0.1:5174/**. Environment assets stream automatically; no generation API keys are needed.
 
-## Download the house for local use
+**Controls:** Arrow keys to move and turn · **A** to switch characters · **F/V/B/M** for camera views · **R** to reset.
 
-From `environment-sim/v2/`:
+The [two-floor walkthrough](http://127.0.0.1:5174/?house=1) is available as a separate scene.
 
-```sh
-npm run fetch-world
-cp .env.example .env.local
-```
-
-Uncomment `VITE_WORLD_MANIFEST_URL=/worlds/tantau-local.json` in `.env.local` and restart Vite. The fetch script downloads both the 43.45 MB RAD appearance asset and the 4.32 MB GLB collider, writes a local manifest, and records SHA-256 checksums. Large files live in Git-ignored `public/worlds/`.
-
-Agents can also use `curl` with the URLs from `public/environment/tantau.json`; the following shell example requires Node and curl:
-
-```sh
-mkdir -p public/worlds
-curl --fail --location --retry 3 "$(node -p 'JSON.parse(require("fs").readFileSync("public/environment/tantau.json", "utf8")).splatUrl')" --output public/worlds/tantau.rad
-curl --fail --location --retry 3 "$(node -p 'JSON.parse(require("fs").readFileSync("public/environment/tantau.json", "utf8")).colliderUrl')" --output public/worlds/tantau-collider.glb
-```
-
-Prefer `npm run fetch-world`: it also creates the local manifest. Both files are needed—the collider alone does not contain the room's photorealistic appearance. No Google Drive upload is needed. Public URLs were verified on 2026-09-05; keep a local copy for demos.
-
-## Team entry points
-
-- [Connected floors, corrected staircase and access review](docs/implementation/upstairs/layout-access-review.md)
-- [V2 app and character integration](environment-sim/v2/README.md)
-- [Implementation handoff and validation](docs/implementation/v2/README.md)
-- [Shared team foundations](docs/shared-specs/draft/TEAM-FOUNDATIONS.md)
-- [Team character and multi-floor app](environment-sim/v1-draft/README.md)
-
-The Unitree robot is replaceable through the resident API. The generated room approximates listing photos; dimensions and unseen regions are not surveyed. No full biomechanical model or automatic hazard detection is claimed.
-
-## Bringing the room into the team app
-
-V2 uses Spark to render RAD splats. The v1 GLB visual-slot loader cannot render the RAD directly, and the collider GLB is not a textured house. Reuse v2's `world-loader.ts` and rendering layers when integrating with v1, and reconcile coordinate transforms/navigation before moving v1 characters into this room. V2 incorporates the Unitree bodies and room-local fall poses; the garden still requires integration; a primary bedroom and upper hall are available in connected-house mode. See [the existing team handoff](docs/TEAM-HANDOFF-HOUSE.md) for those modules.
-
-## Checks
-
-Inside `environment-sim/v2/`, run `npm run build` and `npm test`. With the dev server running, use `npm run test:combined`. Browser scripts use installed Google Chrome via Playwright. Sample-based checks also require `npm run fetch-sample`. See the v2 README for the remaining scripts.
+See the [development guide](environment-sim/v2/README.md) for local asset downloads, additional scenes, tests, and integration details.

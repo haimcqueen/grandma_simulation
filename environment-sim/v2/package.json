@@ -22,7 +22,8 @@
     "test:cutaway": "node scripts/test-cutaway.mjs",
     "test:recovery": "node scripts/test-hazard-recovery.mjs",
     "test:walkthrough": "node scripts/test-walkthrough.mjs",
-    "test:ottoman": "node scripts/test-ottoman.mjs"
+    "test:ottoman": "node scripts/test-ottoman.mjs",
+    "test:chair": "node scripts/test-chair.mjs"
   },
   "dependencies": {
     "@sparkjsdev/spark": "2.1.0",

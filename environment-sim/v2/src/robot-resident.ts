@@ -9,6 +9,7 @@ import type { RobotAsset } from "./robot-assets";
 import { poseFall } from "../../v1-draft/src/robot/fall-motion";
 import { roomFallFrame, poseRoomRecovery, type RoomFall } from "./falls";
 import { createObstacleSupport } from "./obstacle-support";
+import { poseChairTrip } from "./chair-trip";
 
 export type UnitreeResident = Awaited<ReturnType<typeof loadRobotResident>>;
 
@@ -59,6 +60,7 @@ export async function loadRobotResident(initialPosture: Posture, asset: RobotAss
         const frame = roomFallFrame(fall);
         const { pitch, roll } = frame.recovery > 0
           ? poseRoomRecovery(robot, stance, phase, time, motion, 0, frame.recovery, 0, fall.kind)
+          : fall.chair ? poseChairTrip(robot, stance, phase, time, motion, 0, frame.progress, 0, fall.kind)
           : poseFall(robot, stance, phase, time, motion, 0, frame.progress, 0, fall.kind);
         robot.root.rotation.set(pitch, 0, roll);
         root.getWorldPosition(worldPosition);

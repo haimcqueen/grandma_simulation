@@ -45,6 +45,11 @@ export interface HazardHit {
  */
 export const HAZARD_CATALOG: HazardDef[] = [
   {
+    id: "dining_chair", object: "Dining chair leg in the walking path", category: "falls_mobility",
+    elderly: { severity: "high", reason: "Authored scenario: foot catches the chair; attempted support fails." },
+    toddler: { severity: "medium", reason: "Chair leg in the walking path." },
+  },
+  {
     id: "ottoman", object: "Ottoman in the walking path", category: "falls_mobility",
     elderly: { severity: "medium", reason: "Authored demo: a foot catches the low furniture." },
     toddler: { severity: "low", reason: "Low furniture in the walking path." },

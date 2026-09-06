@@ -1,4 +1,4 @@
-import type { RoomFall } from "./falls";
+import { roomFallFrame, type RoomFall } from "./falls";
 import type { DangerLevel } from "./fall-danger";
 import "./fall-danger-overlay.css";
 
@@ -20,14 +20,15 @@ export function createFallDangerOverlay(host: HTMLElement) {
   let previous = "";
   return {
     update(fall: RoomFall | null, status: string) {
-      const key = fall ? JSON.stringify([fall.hazard, status]) : "";
+      const chairStage = fall?.chair && status === "falling" ? roomFallFrame(fall).stage : "";
+      const key = fall ? JSON.stringify([fall.hazard, status, chairStage]) : "";
       if (key === previous) return;
       previous = key;
       panel.hidden = !fall;
       if (!fall) return;
       panel.querySelector("[data-title]")!.textContent = fall.hazard?.label ?? "Simulated fall";
       panel.querySelector("[data-phase]")!.textContent = status === "recovering" ? "Getting back up" : status === "fallen"
-        ? fall.obstacle?.support ? "Fall detected · Caught on the ottoman" : "Fall detected · On the floor" : "Fall detected";
+        ? fall.obstacle?.support ? "Fall detected · Caught on the ottoman" : "Fall detected · On the floor" : chairStage || "Fall detected";
       for (const dimension of ["likelihood", "intensity"] as const) {
         const level = fall.hazard?.danger?.[dimension];
         const row = panel.querySelector<HTMLElement>(`[data-rating="${dimension}"]`)!;

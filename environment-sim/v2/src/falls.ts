@@ -1,5 +1,6 @@
 import { GROUND_FALL_DURATIONS, groundFallFrame, poseFall } from "../../v1-draft/src/robot/fall-motion";
 import type { FallHazard } from "./fall-danger";
+import { CHAIR_TRIP_DURATION, chairTripFrame, type ChairTrip } from "./chair-trip";
 
 /** Room-local demos. No patio, balcony or stair coordinates are imported. */
 export const roomFalls = [
@@ -8,11 +9,12 @@ export const roomFalls = [
   { id: "sideways", label: "Lose balance sideways", description: "Sway sideways and land on the hip and shoulder." },
 ] as const;
 export type RoomFallKind = typeof roomFalls[number]["id"];
-export type RoomFall = { kind: RoomFallKind; elapsed: number; hazard?: FallHazard; autoRecover?: boolean; obstacle?: { travel: number; lateral?: number; solidId?: string; support?: import("./obstacle-support").ObstacleSupport } };
+export type RoomFall = { kind: RoomFallKind; elapsed: number; chair?: ChairTrip; hazard?: FallHazard; autoRecover?: boolean; obstacle?: { travel: number; lateral?: number; solidId?: string; support?: import("./obstacle-support").ObstacleSupport } };
 export const RECOVERY_REST = 1.1;
 export const RECOVERY_DURATION = 3.8;
 export const roomFallFrame = (fall: RoomFall) => {
   const frame = groundFallFrame(fall.kind, fall.elapsed);
+  if (fall.chair) Object.assign(frame, chairTripFrame(fall.elapsed, fall.chair));
   if (fall.obstacle && fall.kind === "trip") {
     const movement = frame.forward / 0.65;
     frame.forward = movement * fall.obstacle.travel;
@@ -23,7 +25,7 @@ export const roomFallFrame = (fall: RoomFall) => {
     else if (fall.obstacle.support) frame.stage = frame.progress < 1 ? "Tipping forward over the ottoman" : "Supported across the ottoman";
   }
   const recovery = fall.autoRecover
-    ? Math.max(0, Math.min(1, (fall.elapsed - roomFallDuration(fall.kind) - RECOVERY_REST) / RECOVERY_DURATION)) : 0;
+    ? Math.max(0, Math.min(1, (fall.elapsed - (fall.chair ? CHAIR_TRIP_DURATION : roomFallDuration(fall.kind)) - RECOVERY_REST) / RECOVERY_DURATION)) : 0;
   if (fall.obstacle?.support && recovery > 0) {
     const retreat = Math.min(1, recovery / 0.65);
     frame.forward *= 1 - retreat * retreat * (3 - 2 * retreat);
@@ -32,7 +34,7 @@ export const roomFallFrame = (fall: RoomFall) => {
     ? recovery < 0.35 ? "Bracing to get up" : recovery < 0.7 ? "Pushing up onto one knee" : "Standing and finding balance"
     : frame.stage };
 };
-export const roomFallTotalDuration = (fall: RoomFall) => roomFallDuration(fall.kind)
+export const roomFallTotalDuration = (fall: RoomFall) => (fall.chair ? CHAIR_TRIP_DURATION : roomFallDuration(fall.kind))
   + (fall.autoRecover ? RECOVERY_REST + RECOVERY_DURATION : 0);
 
 /** Grounded recovery: brace, kneel, then extend the legs. No world/renderer dependency. */

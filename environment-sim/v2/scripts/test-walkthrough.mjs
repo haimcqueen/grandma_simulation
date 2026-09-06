@@ -18,7 +18,7 @@ try {
   assert.deepEqual((await state()).position, initial.position, 'No autonomous walking');
   assert.equal(initial.posture, 'grandma');
   assert.equal(initial.hazardProfile, 'auto');
-  assert.deepEqual(await page.evaluate(() => window.houseLab.simulation.environment.hazardZones.map(z => z.hazardId)), ['ottoman']);
+  assert.deepEqual(await page.evaluate(() => window.houseLab.simulation.environment.hazardZones.map(z => z.hazardId)), ['ottoman', 'dining_chair']);
   assert.deepEqual(initial.route, []);
   assert.equal(await page.evaluate(() => window.houseLab.viewer.hazards.root.visible), false);
   assert.equal(await page.evaluate(() => window.houseLab.viewer.destinations.children.length), 0);
@@ -73,5 +73,5 @@ try {
   await page.locator('#retry').click();
   await page.waitForFunction(() => document.querySelector('#app').dataset.ready === 'true', undefined, { timeout: 90000 });
   assert.deepEqual(errors, []);
-  console.log('Walkthrough passed: clean room, idle start, keyboard movement/braking, four persistent camera views, only the replacement ottoman hazard, collision, responsive layout and retry.');
+  console.log('Walkthrough passed: clean room, idle start, keyboard movement/braking, four persistent camera views, ottoman and chair hazards, collision, responsive layout and retry.');
 } finally { await browser.close(); }

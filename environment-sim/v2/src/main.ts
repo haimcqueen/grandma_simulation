@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { createFallDangerOverlay } from "./fall-danger-overlay";
 import { rebuildReplacementNavigation } from "./replacement-navigation";
 import { tantauOttoman, loadRoomObject } from "./room-objects";
+import { tantauChairHazards } from "./room-hazards";
 import { parseWorldAsset } from "./asset-manifest";
 import type { Environment } from "./contracts";
 import { createKeyboardControls } from "./keyboard-controls";
@@ -73,7 +74,8 @@ async function start() {
     validateSimulationEnvironment(environment);
     if (disposed) return;
     const furniture = asset.id === "tantau-great-room" ? [tantauOttoman] : [];
-    simulation = createWalkthroughSimulation(environment, furniture.map(object => object.hazard));
+    const roomHazards = [...furniture.map(object => object.hazard), ...(asset.id === "tantau-great-room" ? tantauChairHazards : [])];
+    simulation = createWalkthroughSimulation(environment, roomHazards);
     nextViewer = new Viewer(viewport, simulation.environment);
     viewer = nextViewer;
     viewer.hazardPropsVisible = false;
@@ -95,7 +97,7 @@ async function start() {
       id: object.id, label: "Ottoman", kind: "obstruction" as const, x: object.position[0], z: object.position[2],
       width: object.size[0], depth: object.size[2], height: object.size[1],
     }))] };
-    simulation = createWalkthroughSimulation(walkingEnvironment, furniture.map(object => object.hazard));
+    simulation = createWalkthroughSimulation(walkingEnvironment, roomHazards);
     viewer.activateWorldSimulation(simulation.environment);
     viewer.destinations.visible = false;
     viewer.marker.root.visible = false;

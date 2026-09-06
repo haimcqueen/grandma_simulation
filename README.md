@@ -14,9 +14,9 @@ Thanks to **Founders Inc., Mint, Tripo, World Labs, and Convex** for supporting 
 
 ## Screenshots
 
-| Third-person exploration | World overview |
-| --- | --- |
-| ![Unitree in the living room](docs/media/thirdpov-sample.jpg) | ![Generated room overview](docs/media/wide-view-sample.jpg) |
+![Third-person exploration with Unitree in the living room](docs/media/thirdpov-sample.jpg)
+
+![World overview of the generated room](docs/media/wide-view-sample.jpg)
 
 ![Hazard explanation and home-safety recommendations](docs/media/fall-risk-sample.jpg)
 

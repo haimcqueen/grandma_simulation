@@ -13,6 +13,7 @@ import { distance, planRoute, segmentClear } from "./navigation";
 import { postures, type Posture } from "./posture";
 import { roomFalls, roomFallFrame, roomFallTotalDuration, type RoomFall, type RoomFallKind } from "./falls";
 import { HazardTracker, conditionForSubject, hazardAt, hazardFallKinds, zoneKey, type HazardProfile } from "./hazards";
+import { CHAIR_TRIP_DURATION, chairTripFrame } from "./chair-trip";
 
 export class Simulation {
   house?: House;
@@ -202,6 +203,24 @@ export class Simulation {
     const touching = !solid || (Math.abs(this.position.x - solid.x) <= solid.width / 2 + this.profile.radius + 0.06
       && Math.abs(this.position.z - solid.z) <= solid.depth / 2 + this.profile.radius + 0.06);
     if (hit && kind && touching && !this.triggeredZones.has(`${this.floorId}:${zoneKey(hit.zone)}`)) {
+      let chair: RoomFall["chair"];
+      const zone = this.environment.hazardZones?.find(zone => zoneKey(zone) === zoneKey(hit.zone));
+      if (zone?.chairTrip) {
+        const toward = (zone.x - this.position.x) * Math.sin(this.heading) + (zone.z - this.position.z) * Math.cos(this.heading);
+        if (toward < distance(this.position, zone) * 0.65) return;
+        chair = [{ retreat: 0.65, lateral: 0.22 }, { retreat: 0.65, lateral: 0 }, { retreat: 0.5, lateral: 0 }].find(candidate => {
+          let previous = this.position;
+          for (let i = 1; i <= 36; i++) {
+            const frame = chairTripFrame(CHAIR_TRIP_DURATION * i / 36, candidate);
+            const next = { x: this.position.x + Math.sin(this.heading) * frame.forward + Math.cos(this.heading) * frame.lateral,
+              z: this.position.z + Math.cos(this.heading) * frame.forward - Math.sin(this.heading) * frame.lateral };
+            if (!segmentClear(this.environment, previous, next, this.obstacles, this.profile.radius)) return false;
+            previous = next;
+          }
+          return true;
+        });
+        if (!chair) return;
+      }
       let obstacleFall: RoomFall["obstacle"];
       const obstacle = this.environment.hazardZones?.find(zone => zoneKey(zone) === zoneKey(hit.zone))?.obstacle;
       if (obstacle && solid) {
@@ -218,6 +237,7 @@ export class Simulation {
       const resume = { manual: this.manual, destination: this.destination, point: this.pointTarget && { ...this.pointTarget } };
       if (!this.playFall(kind)) return;
       this.fall!.autoRecover = true;
+      this.fall!.chair = chair;
       this.fall!.obstacle = obstacleFall;
       const danger = this.environment.hazardZones?.find(zone => zoneKey(zone) === zoneKey(hit.zone))?.danger;
       this.fall!.hazard = { id: hit.zone.hazardId, label: hit.zone.room, danger: danger ? { ...danger } : undefined };

@@ -14,7 +14,7 @@ The artificial carpet repair mesh has been removed. The splat eraser starts 7 cm
 
 ## Contact, fall and recovery
 
-The imported ottoman is the only automatic hazard in the default walkthrough. Its detection envelope is narrowed to contact with its solid footprint plus the resident's clearance. It is solid even if automatic falls are disabled.
+The default walkthrough includes the imported ottoman and the scanned dining-chair encounter (see `CHAIR-TRIP.md`). Its detection envelope is narrowed to contact with its solid footprint plus the resident's clearance. It is solid even if automatic falls are disabled.
 
 A front contact tips grandma forward across the ottoman cushion, with no sideways displacement. The authored root moves up to 55 cm forward and returns to the initial contact point during recovery. Only the contacted solid is exempted from horizontal root blocking during this animation; the scanned navigation grid and other objects remain enforced. `obstacle-support.ts` grounds the posed body on the ottoman top using the world bounds of each articulated mesh, preventing links from sinking into the cushion during the fall or recovery. Top height comes from `RoomHazardZone.obstacle.baseY` (or the environment floor) plus the solid height.
 

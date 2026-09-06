@@ -12,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-Use Node 22.12+ or 24+. Open **http://127.0.0.1:5174/?house=1** for the two-floor walkthrough or **http://127.0.0.1:5174/** for the single-room ottoman demo. Choose **Use Grandma** at the bottom right; choose **Use Unitree** to switch back. WASD/arrow keys and cameras work with either appearance. House mode also has click walking, Walk upstairs/downstairs, Top down, Side and a stair map. The studio remains at `/simulation.html` and retains its own character controls.
+Use Node 22.12+ or 24+. Open **http://127.0.0.1:5174/?house=1** for the two-floor walkthrough or **http://127.0.0.1:5174/** for the single-room ottoman demo. Use **Switch to Grandma** directly below the camera controls; choose **Switch to Unitree** to switch back. The adjacent Character label shows the active model. This control stays above the scene on desktop and mobile, clear of the lower-left hazard report. WASD/arrow keys and cameras work with either appearance. House mode also has click walking, Walk upstairs/downstairs, Top down, Side and a stair map. The studio remains at `/simulation.html` and retains its own character controls.
 
 The grandma GLB is committed at `public/characters/grandma-idle.glb`; its texture and skeleton are embedded. Unitree assets are already in `environment-sim/v1-draft/public/robot` and imported by v2. Clone the whole repository, not just the v2 directory. No personal Downloads path, API key or Mint authentication is required to play. House assets stream from the existing manifests; optional local copies use `npm run fetch-house` (see [house asset handoff](implementation/upstairs/README.md)).
 

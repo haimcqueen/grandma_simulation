@@ -23,15 +23,11 @@ app.innerHTML = `
   <nav class="camera-views" aria-label="Camera views">
     ${views.map(view => `<button data-view="${view.id}" aria-pressed="${view.id === "follow"}" title="${view.label} (${view.shortcut})" disabled>${view.label}</button>`).join("")}
   </nav>
-  <div class="character-switch" role="group" aria-label="Character selection">
-    <span class="character-current">Character <strong id="current-character">Unitree</strong></span>
-    <button id="grandma-toggle" aria-pressed="false" disabled>Switch to Grandma</button>
-    <span id="character-status" role="status"></span>
-  </div>
+  <span id="character-status" role="status"></span>
   ${connectedHouse ? `<div class="house-actions"><button id="walk-floor" disabled>Walk upstairs</button><button id="stop-walk" disabled>Stop here</button><span id="movement-status" role="status"></span></div>` : ""}
   </div>
   <div class="loading-message" role="status"><span id="load-status">Loading the room…</span><button id="retry" hidden>Try again</button></div>
-  <div class="walk-hint"><span>↑ ↓ Move <span class="hint-divider">/</span> ← → Turn <span class="hint-divider">/</span> WASD</span><span id="camera-hint">Drag to look · Scroll to zoom</span></div>
+  <div class="walk-hint"><span>↑ ↓ Move <span class="hint-divider">/</span> ← → Turn <span class="hint-divider">/</span> A Switch character</span><span id="camera-hint">Drag to look · Scroll to zoom</span></div>
 </main>`;
 const viewport = document.querySelector<HTMLElement>("#viewport")!;
 const fallDanger = createFallDangerOverlay(viewport);
@@ -47,36 +43,30 @@ let ready = false;
 let disposed = false;
 let grandmaSelected = false;
 let switchingCharacter = false;
-const characterToggle = document.querySelector<HTMLButtonElement>("#grandma-toggle")!;
-const currentCharacter = document.querySelector<HTMLElement>("#current-character")!;
 const characterStatus = document.querySelector<HTMLElement>("#character-status")!;
-characterToggle.onclick = async () => {
+async function switchCharacter() {
   if (!ready || !viewer || !simulation || switchingCharacter || simulation.fall || simulation.floorJourney) return;
   const nextGrandma = !grandmaSelected;
-  switchingCharacter = true; characterToggle.disabled = true;
+  switchingCharacter = true;
   characterStatus.textContent = nextGrandma ? "Loading Grandma…" : "Loading Unitree…";
   try {
     if (nextGrandma) await viewer.loadGrandma(simulation.posture); else await viewer.loadRobot(simulation.posture);
     if (disposed) return;
     grandmaSelected = nextGrandma;
-    currentCharacter.textContent = nextGrandma ? "Grandma" : "Unitree";
-    characterToggle.textContent = nextGrandma ? "Switch to Unitree" : "Switch to Grandma";
-    characterToggle.setAttribute("aria-pressed", String(nextGrandma));
     characterStatus.textContent = "";
   } catch {
     characterStatus.textContent = "Could not switch character. Try again.";
   } finally {
-    switchingCharacter = false; characterToggle.disabled = !ready;
-    characterToggle.blur();
+    switchingCharacter = false;
   }
-};
+}
 
 function selectView(view: Viewer["view"]) {
   if (!ready || !viewer) return;
   viewer.setView(view);
   for (const button of buttons) button.setAttribute("aria-pressed", String(button.dataset.view === view));
   hint.textContent = view === "map" ? "Drag to pan · Scroll to zoom"
-    : view === "first" ? "Turn with ← → or A / D"
+    : view === "first" ? "Turn with ← →"
     : "Drag to orbit · Scroll to zoom";
 }
 const keyboard = createKeyboardControls(window, {
@@ -85,6 +75,10 @@ const keyboard = createKeyboardControls(window, {
   onClear: () => simulation?.stopManualMotion(),
   onShortcut: event => {
     if (!ready) return false;
+    if (event.code === "KeyA") {
+      if (!event.repeat) void switchCharacter();
+      return true;
+    }
     const view = views.find(view => event.code === `Key${view.shortcut}`);
     if (view) { selectView(view.id as Viewer["view"]); return true; }
     if (event.code === "KeyR") { keyboard.clear(); movement?.cancel(false); simulation?.reset(); simulation?.setManual(); return true; }
@@ -186,7 +180,6 @@ async function start() {
         accumulator -= 1 / 60;
       }
       viewer!.update(simulation!);
-      characterToggle.disabled = switchingCharacter || !!simulation!.fall || !!simulation!.floorJourney;
       if (connectedHouse) {
         const floorButton = document.querySelector<HTMLButtonElement>("#walk-floor")!;
         floorButton.disabled = !!simulation!.floorJourney;

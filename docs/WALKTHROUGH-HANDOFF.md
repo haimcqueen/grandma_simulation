@@ -7,7 +7,7 @@ The user-supplied ottoman now replaces the original object in the room and acts 
 ## Current behavior
 
 - Grandma uses the reusable `GRANDMA_STANCE` in `src/posture.ts`: deeper knees (0.62 rad), hip flexion (0.30 rad), stronger waist stoop (0.52 rad, the G1 joint limit), forward head and rounded shoulders. Ankle compensation keeps resting soles level.
-- Grandma starts still. Arrow keys or WASD move and turn her; releasing movement brakes to a stop.
+- Grandma starts still. Arrow keys move and turn her; A switches between Grandma and Unitree; releasing movement brakes to a stop.
 - First person, Third person, Wide and Map are the only visible controls. Camera selection persists while moving. Shortcuts: F, V, B and M respectively; R returns grandma to the spawn.
 - Wide uses the existing room cutaway. Map uses the orthographic navigation map with pan/zoom.
 - No right sidebar, automatic tour, body selector, destination rings or hazard popups are loaded into this session. The imported ottoman is the only configured contact hazard; the old rug/cable/toy demos stay disabled.

@@ -12,13 +12,13 @@ npm ci
 npm run dev
 ```
 
-Use Node 22.12+ or 24+. Open **http://127.0.0.1:5174/?house=1** for the two-floor walkthrough or **http://127.0.0.1:5174/** for the single-room ottoman demo. Use **Switch to Grandma** directly below the camera controls; choose **Switch to Unitree** to switch back. The adjacent Character label shows the active model. This control stays above the scene on desktop and mobile, clear of the lower-left hazard report. WASD/arrow keys and cameras work with either appearance. House mode also has click walking, Walk upstairs/downstairs, Top down, Side and a stair map. The studio remains at `/simulation.html` and retains its own character controls.
+Use Node 22.12+ or 24+. Open **http://127.0.0.1:5174/?house=1** for the two-floor walkthrough or **http://127.0.0.1:5174/** for the single-room ottoman demo. Press **A** to switch between Grandma and Unitree. There is no character button or panel; the shortcut appears in the controls hint. Holding A does not repeat the switch. Switching is ignored while loading a model, falling, or transferring floors; a failed download keeps the current model and displays a retry message. Arrow keys and cameras work with either appearance. A switches characters instead of turning left in the walkthrough. House mode also has click walking, Walk upstairs/downstairs, Top down, Side and a stair map. The studio remains at `/simulation.html` and retains its own character controls.
 
 The grandma GLB is committed at `public/characters/grandma-idle.glb`; its texture and skeleton are embedded. Unitree assets are already in `environment-sim/v1-draft/public/robot` and imported by v2. Clone the whole repository, not just the v2 directory. No personal Downloads path, API key or Mint authentication is required to play. House assets stream from the existing manifests; optional local copies use `npm run fetch-house` (see [house asset handoff](implementation/upstairs/README.md)).
 
 ## What changed
 
-- Added the human/robot toggle to both walkthrough hosts. It preserves simulation position, floor, heading, route, speed, pause and hazard settings. During falls or stair transfers the toggle is disabled; failed downloads retain the current model and allow retry.
+- Added the human/robot toggle to both walkthrough hosts. It preserves simulation position, floor, heading, route, speed, pause and hazard settings. During falls or stair transfers the shortcut is ignored; failed downloads retain the current model and allow retry.
 - Replaced the oversized idle preview with a human skeleton driven by the existing G1 adapter. The human's initial stooped height matches G1 at approximately 1.145 m. There is no independent walking/fall animation implementation or human AnimationMixer.
 - Added a human head anchor for first person, pose-aware floor grounding, and support on furniture during the latest teammate's forward ottoman fall. Furniture support checks the deformed human vertices over the supplied support footprint; it does not use the hidden robot's world position.
 - Included teammate changes through `ee81cd3`: forward-only ottoman falls/recovery, support geometry and removal of the artificial carpet patch. Their Unitree motion modules remain intact.
@@ -50,7 +50,7 @@ node scripts/test-grandma-toggle.mjs
 npm run test:ottoman
 ```
 
-Run graphics browser checks sequentially. Motion checks cover posed height, knee motion, pause, rotated/elevated roots, three fall/recovery sequences, and human vertex support over furniture. Toggle checks cover both hosts, state preservation, WASD, cameras, both stair directions, fall/reset, failure rollback and mobile overflow. The ottoman check covers the teammate's robot contact/recovery behavior.
+Run graphics browser checks sequentially. Motion checks cover posed height, knee motion, pause, rotated/elevated roots, three fall/recovery sequences, and human vertex support over furniture. Toggle checks cover both hosts, state preservation, arrow keys, cameras, both stair directions, fall/reset, failure rollback and mobile overflow. The ottoman check covers the teammate's robot contact/recovery behavior.
 
 Release validation: production build, all 27 simulation tests, grandma motion and toggle browser checks, and the corrected robot ottoman regression passed on the merged implementation.
 

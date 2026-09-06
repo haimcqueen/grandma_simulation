@@ -41,9 +41,9 @@ try {
   // Walk across the old rug zone. No artificial props or invisible hazard falls remain.
   await page.keyboard.press('KeyR');
   await page.keyboard.press('KeyV');
-  await page.keyboard.down('KeyA');
+  await page.keyboard.down('ArrowLeft');
   await page.waitForFunction(() => window.houseLab.simulation.heading > 0.55);
-  await page.keyboard.up('KeyA');
+  await page.keyboard.up('ArrowLeft');
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(1600);
   await page.keyboard.up('KeyW');

@@ -13,7 +13,9 @@ export function createObstacleSupport() {
     root.updateWorldMatrix(true, true);
     let lift = 0;
     root.traverse(child => {
-      if (!(child instanceof THREE.Mesh)) return;
+      // Robot assets can originate from v1's Three.js module instance. Use the
+      // public mesh flag so their links participate in support in either host.
+      if (!(child as THREE.Mesh).isMesh) return;
       bounds.setFromObject(child);
       if (bounds.max.x < support.x - support.width / 2 || bounds.min.x > support.x + support.width / 2
         || bounds.max.z < support.z - support.depth / 2 || bounds.min.z > support.z + support.depth / 2) return;

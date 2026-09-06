@@ -22,6 +22,7 @@ The grandma GLB is committed at `public/characters/grandma-idle.glb`; its textur
 - Replaced the oversized idle preview with a human skeleton driven by the existing G1 adapter. The human's initial stooped height matches G1 at approximately 1.145 m. There is no independent walking/fall animation implementation or human AnimationMixer.
 - Added a human head anchor for first person, pose-aware floor grounding, and support on furniture during the latest teammate's forward ottoman fall. Furniture support checks the deformed human vertices over the supplied support footprint; it does not use the hidden robot's world position.
 - Included teammate changes through `ee81cd3`: forward-only ottoman falls/recovery, support geometry and removal of the artificial carpet patch. Their Unitree motion modules remain intact.
+- Made the furniture support helper recognize meshes by Three.js's public `isMesh` flag, so links from a separate module instance are included. The merged browser regression previously recorded torso/cushion overlap during recovery; the corrected helper passes the robot clearance check.
 
 ## Reuse and division of work
 
@@ -50,5 +51,7 @@ npm run test:ottoman
 ```
 
 Run graphics browser checks sequentially. Motion checks cover posed height, knee motion, pause, rotated/elevated roots, three fall/recovery sequences, and human vertex support over furniture. Toggle checks cover both hosts, state preservation, WASD, cameras, both stair directions, fall/reset, failure rollback and mobile overflow. The ottoman check covers the teammate's robot contact/recovery behavior.
+
+Release validation: production build, all 27 simulation tests, grandma motion and toggle browser checks, and the corrected robot ottoman regression passed on the merged implementation.
 
 This is runtime pose retargeting, not identical robot/human geometry. Clothing, proportions and hand/foot placement can differ. Grounding/support is an authored approximation, not foot IK, triangle-level swept collision, a cane controller, ragdoll physics or validated biomechanics. Existing grid-access limitations remain; no new world generation or navigation expansion is part of this handoff. The original [adapter review](parallel-work/character-adapters/REVIEW.md) is historical; its idle-only recommendations are superseded by this implementation.

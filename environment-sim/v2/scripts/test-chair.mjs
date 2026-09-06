@@ -18,7 +18,9 @@ try {
   assert.equal(await page.locator('.fall-danger [data-title]').innerText(),'Dining chair · Trip and fall');
   assert.equal(await page.locator('[data-rating="likelihood"] strong').innerText(),'High');
   assert.equal(await page.locator('[data-rating="intensity"] strong').innerText(),'High');
-  const panel=await page.locator('.fall-danger').boundingBox();assert.ok(panel.x<50 && panel.y>600,'Card appears in the lower left');
+  const panel=await page.locator('.fall-danger').boundingBox();assert.ok(panel.x<50 && panel.width>=500 && Math.abs(panel.y+panel.height-910)<2,'Large card appears in the lower left');
+  assert.equal(await page.locator('[data-mitigations] li').count(),3);
+  assert.match(await page.locator('[data-mitigations]').innerText(),/Tuck the chair/);
   await page.screenshot({path:`.artifacts/chair-${view}-reach.png`});
   await page.waitForFunction(()=>document.querySelector('.fall-danger [data-phase]').textContent==='Trying to regain balance');
   await page.screenshot({path:`.artifacts/chair-${view}-catch.png`});

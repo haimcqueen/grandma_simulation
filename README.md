@@ -12,17 +12,19 @@ Thanks to **Founders Inc., Mint, Tripo, World Labs, and Convex** for supporting 
 
 **[Presentation slides](https://canva.link/7pzzwal00fv0sf8)**
 
-## Demo
-
-![STGS walkthrough and household hazard demonstration](docs/media/STGS-demo.gif)
-
-Explore the home, switch between Unitree and grandma, and encounter simulated hazards with explanations and prevention suggestions.
-
-![Hazard explanation and home-safety recommendations](docs/media/fall-risk-sample.jpg)
+## Screenshots
 
 | Third-person exploration | World overview |
 | --- | --- |
 | ![Unitree in the living room](docs/media/thirdpov-sample.jpg) | ![Generated room overview](docs/media/wide-view-sample.jpg) |
+
+![Hazard explanation and home-safety recommendations](docs/media/fall-risk-sample.jpg)
+
+## Demo
+
+Explore the home, switch between Unitree and grandma, and encounter simulated hazards with explanations and prevention suggestions.
+
+![STGS walkthrough and household hazard demonstration](docs/media/STGS-demo.gif)
 
 ## How it works
 
